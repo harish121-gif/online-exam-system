@@ -1,7 +1,7 @@
 # Python
 backend/.env
 backend/venv/
-backend/__pycache__/
+backend/**__pycache__/
 backend/**/*.pyc
 
 # Node
@@ -10,6 +10,9 @@ frontend/dist/
 
 # Environment files
 *.env
+
+# Database backups
+*.sql
 
 # IDE / OS
 .vscode/
