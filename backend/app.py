@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 from config import Config
+
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.exam import exam_bp
@@ -20,19 +21,25 @@ def create_app():
 
     app.config["SECRET_KEY"] = Config.SECRET_KEY
 
-    # Allow browser to send Flask session cookie
+    # Session cookie configuration
+    #
+    # Required because React frontend and
+    # Render backend are on different domains.
+    #
     app.config["SESSION_COOKIE_HTTPONLY"] = True
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    app.config["SESSION_COOKIE_SECURE"] = False
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"] = True
 
     # ==========================================
-    # CORS
+    # CORS CONFIGURATION
     # ==========================================
 
     CORS(
         app,
         origins=Config.CORS_ORIGINS,
-        supports_credentials=True
+        supports_credentials=True,
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"]
     )
 
     # ==========================================
@@ -45,7 +52,7 @@ def create_app():
     app.register_blueprint(question_bp)
     app.register_blueprint(question_import_bp)
     app.register_blueprint(attempt_bp)
- 
+
     # ==========================================
     # HOME
     # ==========================================
@@ -60,7 +67,7 @@ def create_app():
         })
 
     # ==========================================
-    # HEALTH
+    # HEALTH CHECK
     # ==========================================
 
     @app.route("/api/health")
@@ -69,6 +76,21 @@ def create_app():
         return jsonify({
             "success": True,
             "message": "Backend and Flask server are working"
+        })
+
+    # ==========================================
+    # SESSION TEST
+    # ==========================================
+
+    @app.route("/api/test-session")
+    def test_session():
+
+        from flask import session
+
+        return jsonify({
+            "success": True,
+            "logged_in": bool(session.get("student_id")),
+            "student_id": session.get("student_id")
         })
 
     return app
@@ -82,13 +104,13 @@ app = create_app()
 
 
 # ==============================================
-# RUN APPLICATION
+# RUN APPLICATION LOCALLY
 # ==============================================
 
 if __name__ == "__main__":
 
     app.run(
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=5000,
         debug=True
     )

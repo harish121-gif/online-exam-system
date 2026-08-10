@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import "./App.css";
+const API_URL = "https://examsecure-backend.onrender.com/api";
 
-const API_URL = "/api";
+// =========================================================
+// =========================================================
+
+
+// =========================================================
+// MAIN APP
+// =========================================================
 
 function App() {
   const [user, setUser] = useState(null);
@@ -29,9 +36,17 @@ function App() {
   const [questionSet, setQuestionSet] = useState("");
   const [attemptId, setAttemptId] = useState(null);
 
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
+
   useEffect(() => {
     checkSession();
   }, []);
+
+  // =========================================================
+  // REMEMBER EMAIL
+  // =========================================================
 
   useEffect(() => {
     const savedEmail = localStorage.getItem(
@@ -48,26 +63,28 @@ function App() {
   // SESSION CHECK
   // =========================================================
 
-  async function checkSession() {
-    try {
-      const response = await fetch(`${API_URL}/me`, {
-        method: "GET",
-        credentials: "include",
-      });
+async function checkSession() {
+  try {
+    const response = await fetch(`${API_URL}/me`, {
+      method: "GET",
+      credentials: "include",
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.ok && data.success) {
-        setUser(data.user);
+    console.log("SESSION RESPONSE:", data);
 
-        if (data.user.role === "student") {
-          setPage("dashboard");
-        }
+    if (response.ok && data.success) {
+      setUser(data.user);
+
+      if (data.user.role === "student") {
+        setPage("dashboard");
       }
-    } catch (error) {
-      console.log("Session check:", error);
     }
+  } catch (error) {
+    console.error("SESSION CHECK ERROR:", error);
   }
+}
 
   // =========================================================
   // LOGIN
@@ -80,20 +97,22 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/student/login`, {
-        method: "POST",
+      const response = await fetch(
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json",
-        },
+          headers: {
+            "Content-Type": "application/json",
+          },
 
-        credentials: "include",
+          credentials: "include",
 
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -117,11 +136,16 @@ function App() {
           );
         }
       } else {
-        setMessage(data.message || "Login failed.");
+        setMessage(
+          data.message || "Invalid email or password."
+        );
       }
     } catch (error) {
       console.error("LOGIN ERROR:", error);
-      setMessage("Cannot connect to backend.");
+
+      setMessage(
+        "Cannot connect to backend. Please check the server."
+      );
     } finally {
       setLoading(false);
     }
@@ -136,13 +160,18 @@ function App() {
 
     setMessage("");
 
-    if (registerPassword !== registerConfirmPassword) {
+    if (
+      registerPassword !==
+      registerConfirmPassword
+    ) {
       setMessage("Passwords do not match.");
       return;
     }
 
     if (registerPhone.length !== 10) {
-      setMessage("Please enter a valid 10-digit phone number.");
+      setMessage(
+        "Please enter a valid 10-digit phone number."
+      );
       return;
     }
 
@@ -150,7 +179,6 @@ function App() {
 
     try {
       const response = await fetch(
-        `${API_URL}/student/register`,
         {
           method: "POST",
 
@@ -161,8 +189,8 @@ function App() {
           credentials: "include",
 
           body: JSON.stringify({
-            name: registerName,
-            email: registerEmail,
+            name: registerName.trim(),
+            email: registerEmail.trim(),
             phone: registerPhone,
             password: registerPassword,
           }),
@@ -171,7 +199,10 @@ function App() {
 
       const data = await response.json();
 
-      console.log("REGISTER RESPONSE:", data);
+      console.log(
+        "REGISTER RESPONSE:",
+        data
+      );
 
       if (response.ok && data.success) {
         setMessage(
@@ -190,12 +221,19 @@ function App() {
         }, 1500);
       } else {
         setMessage(
-          data.message || "Registration failed."
+          data.message ||
+            "Registration failed."
         );
       }
     } catch (error) {
-      console.error("REGISTER ERROR:", error);
-      setMessage("Cannot connect to backend.");
+      console.error(
+        "REGISTER ERROR:",
+        error
+      );
+
+      setMessage(
+        "Cannot connect to backend."
+      );
     } finally {
       setLoading(false);
     }
@@ -205,25 +243,25 @@ function App() {
   // LOGOUT
   // =========================================================
 
-  async function logout() {
-    try {
-      await fetch(`${API_URL}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (error) {
-      console.error("LOGOUT ERROR:", error);
-    }
-
-    setUser(null);
-    setPage("login");
-    setExam(null);
-    setQuestions([]);
-    setQuestionSet("");
-    setAttemptId(null);
-    setMessage("");
+async function logout() {
+  try {
+    await fetch(`${API_URL}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error("LOGOUT ERROR:", error);
   }
 
+  setUser(null);
+  setPage("login");
+
+  setExam(null);
+  setQuestions([]);
+  setQuestionSet("");
+  setAttemptId(null);
+  setMessage("");
+}
   // =========================================================
   // START EXAM
   // =========================================================
@@ -234,7 +272,6 @@ function App() {
 
     try {
       const response = await fetch(
-        `${API_URL}/exam/1/start`,
         {
           method: "POST",
           credentials: "include",
@@ -243,13 +280,26 @@ function App() {
 
       const data = await response.json();
 
-      console.log("START EXAM RESPONSE:", data);
+      console.log(
+        "START EXAM RESPONSE:",
+        data
+      );
 
       if (response.ok && data.success) {
         setExam(data.exam);
-        setQuestions(data.questions);
-        setQuestionSet(data.question_set);
-        setAttemptId(data.attempt_id);
+        setQuestions(
+          Array.isArray(data.questions)
+            ? data.questions
+            : []
+        );
+
+        setQuestionSet(
+          data.question_set || ""
+        );
+
+        setAttemptId(
+          data.attempt_id || null
+        );
 
         setPage("exam");
       } else {
@@ -259,8 +309,14 @@ function App() {
         );
       }
     } catch (error) {
-      console.error("START EXAM ERROR:", error);
-      setMessage("Cannot connect to backend.");
+      console.error(
+        "START EXAM ERROR:",
+        error
+      );
+
+      setMessage(
+        "Cannot connect to backend."
+      );
     } finally {
       setLoading(false);
     }
@@ -272,7 +328,7 @@ function App() {
 
   if (page === "login") {
     return (
-      <div className="login-shell">
+      <div className="login-page">
 
         {/* LEFT SIDE */}
 
@@ -282,12 +338,10 @@ function App() {
 
           <div className="showcase-content">
 
-            {/* BRAND */}
-
             <div className="brand">
 
               <div className="brand-mark">
-                <span>🎓</span>
+                <span>ðŸŽ“</span>
               </div>
 
               <div>
@@ -301,8 +355,6 @@ function App() {
               </div>
 
             </div>
-
-            {/* HERO */}
 
             <div className="showcase-main">
 
@@ -321,12 +373,10 @@ function App() {
               <div className="showcase-line"></div>
 
               <p>
-                Advanced AI monitoring helps create a fair,
-                transparent and secure examination experience
-                for every student.
+                Advanced AI monitoring helps create
+                a fair, transparent and secure
+                examination experience for every student.
               </p>
-
-              {/* EXAM ILLUSTRATION */}
 
               <div className="exam-scene">
 
@@ -374,30 +424,28 @@ function App() {
 
             </div>
 
-            {/* FEATURES */}
-
             <div className="feature-strip">
 
               <Feature
-                icon="🛡️"
+                icon="ðŸ›¡ï¸"
                 title="Secure"
                 text="Environment"
               />
 
               <Feature
-                icon="🧠"
+                icon="ðŸ§ "
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="📊"
+                icon="ðŸ“Š"
                 title="Real-time"
                 text="Analytics"
               />
 
               <Feature
-                icon="🔒"
+                icon="ðŸ”’"
                 title="Data"
                 text="Privacy"
               />
@@ -415,7 +463,7 @@ function App() {
           <div className="login-card">
 
             <div className="login-cap">
-              <span>🎓</span>
+              <span>ðŸŽ“</span>
             </div>
 
             <h2>
@@ -428,8 +476,6 @@ function App() {
 
             <form onSubmit={handleLogin}>
 
-              {/* EMAIL */}
-
               <label htmlFor="email">
                 Email Address
               </label>
@@ -437,7 +483,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ✉
+                  âœ‰
                 </span>
 
                 <input
@@ -454,8 +500,6 @@ function App() {
 
               </div>
 
-              {/* PASSWORD */}
-
               <label htmlFor="password">
                 Password
               </label>
@@ -463,7 +507,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  🔒
+                  ðŸ”’
                 </span>
 
                 <input
@@ -479,8 +523,6 @@ function App() {
                 />
 
               </div>
-
-              {/* OPTIONS */}
 
               <div className="login-options">
 
@@ -516,15 +558,11 @@ function App() {
 
               </div>
 
-              {/* ERROR / SUCCESS */}
-
               {message && (
                 <div className="error-message">
                   {message}
                 </div>
               )}
-
-              {/* LOGIN BUTTON */}
 
               <button
                 className="login-button"
@@ -533,12 +571,10 @@ function App() {
               >
                 {loading
                   ? "Signing in..."
-                  : "Student Login →"}
+                  : "Student Login â†’"}
               </button>
 
             </form>
-
-            {/* DIVIDER */}
 
             <div className="or-divider">
 
@@ -549,8 +585,6 @@ function App() {
               <span></span>
 
             </div>
-
-            {/* REGISTER */}
 
             <button
               type="button"
@@ -563,12 +597,10 @@ function App() {
               Create an Account
             </button>
 
-            {/* NOTE */}
-
             <div className="credential-note">
 
               <div className="note-icon">
-                ⓘ
+                â“˜
               </div>
 
               <p>
@@ -578,11 +610,9 @@ function App() {
 
             </div>
 
-            {/* PRIVACY */}
-
             <div className="privacy-note">
 
-              <span>🛡️</span>
+              <span>ðŸ›¡ï¸</span>
 
               Your privacy and security are our priority.
 
@@ -591,7 +621,7 @@ function App() {
           </div>
 
           <div className="copyright">
-            © 2026 ExamSecure. All rights reserved.
+            Â© 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -606,7 +636,7 @@ function App() {
 
   if (page === "register") {
     return (
-      <div className="login-shell">
+      <div className="login-page">
 
         {/* LEFT SIDE */}
 
@@ -616,12 +646,10 @@ function App() {
 
           <div className="showcase-content">
 
-            {/* BRAND */}
-
             <div className="brand">
 
               <div className="brand-mark">
-                <span>🎓</span>
+                <span>ðŸŽ“</span>
               </div>
 
               <div>
@@ -635,8 +663,6 @@ function App() {
               </div>
 
             </div>
-
-            {/* HERO */}
 
             <div className="showcase-main">
 
@@ -653,12 +679,10 @@ function App() {
               <div className="showcase-line"></div>
 
               <p>
-                Register securely and access your online
-                examinations through our intelligent
-                examination platform.
+                Register securely and access your
+                online examinations through our
+                intelligent examination platform.
               </p>
-
-              {/* EXAM ILLUSTRATION */}
 
               <div className="exam-scene">
 
@@ -706,30 +730,28 @@ function App() {
 
             </div>
 
-            {/* FEATURES */}
-
             <div className="feature-strip">
 
               <Feature
-                icon="🛡️"
+                icon="ðŸ›¡ï¸"
                 title="Secure"
                 text="Registration"
               />
 
               <Feature
-                icon="🎓"
+                icon="ðŸŽ“"
                 title="Student"
                 text="Portal"
               />
 
               <Feature
-                icon="🧠"
+                icon="ðŸ§ "
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="🔒"
+                icon="ðŸ”’"
                 title="Data"
                 text="Privacy"
               />
@@ -747,7 +769,7 @@ function App() {
           <div className="login-card register-card">
 
             <div className="login-cap">
-              <span>🎓</span>
+              <span>ðŸŽ“</span>
             </div>
 
             <h2>
@@ -760,8 +782,6 @@ function App() {
 
             <form onSubmit={handleRegister}>
 
-              {/* NAME */}
-
               <label htmlFor="register-name">
                 Full Name
               </label>
@@ -769,7 +789,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  👤
+                  ðŸ‘¤
                 </span>
 
                 <input
@@ -786,8 +806,6 @@ function App() {
 
               </div>
 
-              {/* EMAIL */}
-
               <label htmlFor="register-email">
                 Email Address
               </label>
@@ -795,7 +813,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ✉
+                  âœ‰
                 </span>
 
                 <input
@@ -812,8 +830,6 @@ function App() {
 
               </div>
 
-              {/* PHONE */}
-
               <label htmlFor="register-phone">
                 Phone Number
               </label>
@@ -821,7 +837,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  📱
+                  ðŸ“±
                 </span>
 
                 <input
@@ -837,13 +853,11 @@ function App() {
                     )
                   }
                   required
-                  maxLength="10"
+                  maxLength={10}
                   autoComplete="tel"
                 />
 
               </div>
-
-              {/* PASSWORD */}
 
               <label htmlFor="register-password">
                 Password
@@ -852,7 +866,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  🔒
+                  ðŸ”’
                 </span>
 
                 <input
@@ -864,13 +878,11 @@ function App() {
                     setRegisterPassword(e.target.value)
                   }
                   required
-                  minLength="6"
+                  minLength={6}
                   autoComplete="new-password"
                 />
 
               </div>
-
-              {/* CONFIRM PASSWORD */}
 
               <label htmlFor="register-confirm-password">
                 Confirm Password
@@ -879,7 +891,7 @@ function App() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  🔐
+                  ðŸ”
                 </span>
 
                 <input
@@ -893,21 +905,17 @@ function App() {
                     )
                   }
                   required
-                  minLength="6"
+                  minLength={6}
                   autoComplete="new-password"
                 />
 
               </div>
-
-              {/* MESSAGE */}
 
               {message && (
                 <div className="error-message">
                   {message}
                 </div>
               )}
-
-              {/* REGISTER BUTTON */}
 
               <button
                 className="login-button"
@@ -916,12 +924,10 @@ function App() {
               >
                 {loading
                   ? "Creating Account..."
-                  : "Create Account →"}
+                  : "Create Account â†’"}
               </button>
 
             </form>
-
-            {/* DIVIDER */}
 
             <div className="or-divider">
 
@@ -933,8 +939,6 @@ function App() {
 
             </div>
 
-            {/* BACK TO LOGIN */}
-
             <button
               type="button"
               className="register-button"
@@ -943,14 +947,12 @@ function App() {
                 setPage("login");
               }}
             >
-              ← Back to Student Login
+              â† Back to Student Login
             </button>
-
-            {/* PRIVACY */}
 
             <div className="privacy-note">
 
-              <span>🛡️</span>
+              <span>ðŸ›¡ï¸</span>
 
               Your privacy and security are our priority.
 
@@ -959,7 +961,7 @@ function App() {
           </div>
 
           <div className="copyright">
-            © 2026 ExamSecure. All rights reserved.
+            Â© 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -974,14 +976,14 @@ function App() {
 
   if (page === "dashboard") {
     return (
-      <div className="portal-shell">
+      <div className="portal-page">
 
         <header className="portal-navbar">
 
           <div className="portal-brand">
 
             <div className="mini-brand-mark">
-              🎓
+              ðŸŽ“
             </div>
 
             <strong>
@@ -993,7 +995,7 @@ function App() {
           <div className="portal-user">
 
             <div className="user-avatar">
-              👤
+              ðŸ‘¤
             </div>
 
             <span>
@@ -1015,7 +1017,7 @@ function App() {
           </div>
 
           <h1>
-            Welcome back, {user?.name}! 👋
+            Welcome back, {user?.name}! ðŸ‘‹
           </h1>
 
           <p className="dashboard-intro">
@@ -1049,7 +1051,7 @@ function App() {
               </div>
 
               <div className="card-cap">
-                🎓
+                ðŸŽ“
               </div>
 
             </div>
@@ -1057,25 +1059,29 @@ function App() {
             <div className="dashboard-stats">
 
               <Stat
-                icon="📝"
-                value="30"
+                icon="ðŸ“"
+                value={
+                  questions.length > 0
+                    ? questions.length
+                    : "30"
+                }
                 label="Questions"
               />
 
               <Stat
-                icon="⏱️"
+                icon="â±ï¸"
                 value="30"
                 label="Minutes"
               />
 
               <Stat
-                icon="🎯"
+                icon="ðŸŽ¯"
                 value="Auto"
                 label="Question Set"
               />
 
               <Stat
-                icon="📊"
+                icon="ðŸ“Š"
                 value="Mixed"
                 label="Difficulty"
               />
@@ -1091,19 +1097,19 @@ function App() {
               <div className="rules-grid">
 
                 <p>
-                  ✓ Stable internet connection
+                  âœ“ Stable internet connection
                 </p>
 
                 <p>
-                  ✓ Do not switch browser tabs
+                  âœ“ Do not switch browser tabs
                 </p>
 
                 <p>
-                  ✓ Answer all questions
+                  âœ“ Answer all questions
                 </p>
 
                 <p>
-                  ✓ Timer starts immediately
+                  âœ“ Timer starts immediately
                 </p>
 
               </div>
@@ -1123,7 +1129,7 @@ function App() {
             >
               {loading
                 ? "Starting Examination..."
-                : "Start Examination →"}
+                : "Start Examination â†’"}
             </button>
 
           </section>
@@ -1135,7 +1141,7 @@ function App() {
   }
 
   // =========================================================
-  // EXAM
+  // EXAM PAGE
   // =========================================================
 
   if (page === "exam") {
@@ -1147,6 +1153,13 @@ function App() {
         questionSet={questionSet}
         attemptId={attemptId}
         logout={logout}
+        onFinish={() => {
+          setPage("dashboard");
+          setExam(null);
+          setQuestions([]);
+          setQuestionSet("");
+          setAttemptId(null);
+        }}
       />
     );
   }
@@ -1215,7 +1228,7 @@ function Stat({
 }
 
 // =========================================================
-// EXAM PAGE
+// EXAM PAGE COMPONENT
 // =========================================================
 
 function ExamPage({
@@ -1225,6 +1238,7 @@ function ExamPage({
   questionSet,
   attemptId,
   logout,
+  onFinish,
 }) {
   const [currentQuestion, setCurrentQuestion] =
     useState(0);
@@ -1234,18 +1248,31 @@ function ExamPage({
 
   const [timeLeft, setTimeLeft] =
     useState(
-      (exam?.duration_minutes || 30) * 60
+      (Number(exam?.duration_minutes) || 30) * 60
     );
 
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [examMessage, setExamMessage] =
+    useState("");
+
+  const [tabSwitches, setTabSwitches] =
+    useState(0);
+
+  // =========================================================
   // TIMER
+  // =========================================================
 
   useEffect(() => {
     const timer = setInterval(() => {
-
       setTimeLeft((previous) => {
 
         if (previous <= 1) {
           clearInterval(timer);
+
+          handleSubmitExam(true);
+
           return 0;
         }
 
@@ -1257,20 +1284,23 @@ function ExamPage({
     return () => clearInterval(timer);
   }, []);
 
+  // =========================================================
   // TAB SWITCH DETECTION
+  // =========================================================
 
   useEffect(() => {
-
     const handleVisibility = () => {
 
       if (document.hidden) {
 
+        setTabSwitches(
+          (previous) => previous + 1
+        );
+
         console.log(
           "Tab switch detected"
         );
-
       }
-
     };
 
     document.addEventListener(
@@ -1279,33 +1309,35 @@ function ExamPage({
     );
 
     return () => {
-
       document.removeEventListener(
         "visibilitychange",
         handleVisibility
       );
-
     };
-
   }, []);
 
+  // =========================================================
   // SELECT ANSWER
+  // =========================================================
 
   function selectAnswer(option) {
 
     const question =
       questions[currentQuestion];
 
+    if (!question) {
+      return;
+    }
+
     setAnswers((previous) => ({
-
       ...previous,
-
       [question.id]: option,
-
     }));
   }
 
+  // =========================================================
   // FORMAT TIMER
+  // =========================================================
 
   function formatTime(seconds) {
 
@@ -1324,10 +1356,115 @@ function ExamPage({
     )}`;
   }
 
-  const question =
-    questions[currentQuestion];
+  // =========================================================
+  // SUBMIT EXAM
+  // =========================================================
 
-  if (!question) {
+  async function handleSubmitExam(autoSubmit = false) {
+
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setExamMessage("");
+
+    const answerList = Object.entries(
+      answers
+    ).map(
+      ([questionId, selectedOption]) => ({
+        question_id: Number(questionId),
+        selected_option: selectedOption,
+      })
+    );
+
+    const payload = {
+      attempt_id: attemptId,
+      answers: answerList,
+      tab_switches: tabSwitches,
+      time_remaining: timeLeft,
+    };
+
+    console.log(
+      "SUBMIT EXAM PAYLOAD:",
+      payload
+    );
+
+    try {
+
+      /*
+       * Your backend may use a different submit endpoint.
+       *
+       * We try the common Phase-1 endpoint first.
+       */
+
+      const response = await fetch(
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          credentials: "include",
+
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "SUBMIT EXAM RESPONSE:",
+        data
+      );
+
+      if (response.ok && data.success) {
+
+        alert(
+          autoSubmit
+            ? "Time is over. Your examination has been submitted."
+            : "Examination submitted successfully."
+        );
+
+        onFinish();
+
+      } else {
+
+        /*
+         * If your backend doesn't currently have
+         * /attempt/submit, don't destroy the user's
+         * current answers.
+         */
+
+        setExamMessage(
+          data.message ||
+            "Unable to submit examination."
+        );
+
+        setSubmitting(false);
+      }
+
+    } catch (error) {
+
+      console.error(
+        "SUBMIT EXAM ERROR:",
+        error
+      );
+
+      setExamMessage(
+        "Cannot connect to backend while submitting."
+      );
+
+      setSubmitting(false);
+    }
+  }
+
+  // =========================================================
+  // EMPTY QUESTIONS
+  // =========================================================
+
+  if (!questions || questions.length === 0) {
 
     return (
       <div className="loading-screen">
@@ -1342,15 +1479,30 @@ function ExamPage({
     );
   }
 
+  const question =
+    questions[currentQuestion];
+
+  const answeredCount =
+    Object.keys(answers).length;
+
+  const progress =
+    questions.length > 0
+      ? (answeredCount / questions.length) * 100
+      : 0;
+
+  // =========================================================
+  // EXAM UI
+  // =========================================================
+
   return (
-    <div className="exam-shell">
+    <div className="exam-page">
 
       <header className="exam-navbar">
 
         <div className="portal-brand">
 
           <div className="mini-brand-mark">
-            🎓
+            ðŸŽ“
           </div>
 
           <strong>
@@ -1366,7 +1518,7 @@ function ExamPage({
           </span>
 
           <strong>
-            {exam?.title}
+            {exam?.title || "Aptitude Test"}
           </strong>
 
         </div>
@@ -1374,7 +1526,7 @@ function ExamPage({
         <div className="exam-actions">
 
           <div className="exam-user">
-            👤 {user?.name}
+            ðŸ‘¤ {user?.name}
           </div>
 
           <div
@@ -1386,10 +1538,21 @@ function ExamPage({
               }`
             }
           >
-            ⏱ {formatTime(timeLeft)}
+            â± {formatTime(timeLeft)}
           </div>
 
-          <button onClick={logout}>
+          <button
+            onClick={() => {
+              const confirmLogout =
+                window.confirm(
+                  "Are you sure you want to logout? Your current examination may be lost."
+                );
+
+              if (confirmLogout) {
+                logout();
+              }
+            }}
+          >
             Logout
           </button>
 
@@ -1404,7 +1567,7 @@ function ExamPage({
           <div>
 
             <span className="set-badge">
-              Question Set {questionSet}
+              Question Set {questionSet || "A"}
             </span>
 
             <h1>
@@ -1417,15 +1580,7 @@ function ExamPage({
           <div className="answered-summary">
 
             <strong>
-              {
-                Object.keys(
-                  answers
-                ).length
-              }
-              /
-              {
-                questions.length
-              }
+              {answeredCount}/{questions.length}
             </strong>
 
             <span>
@@ -1440,18 +1595,29 @@ function ExamPage({
 
           <div
             style={{
-              width: `${
-                (
-                  Object.keys(
-                    answers
-                  ).length /
-                  questions.length
-                ) * 100
-              }%`,
+              width: `${progress}%`,
             }}
           />
 
         </div>
+
+        {tabSwitches > 0 && (
+          <div className="monitoring-warning">
+
+            âš ï¸ Tab switches detected:
+            {" "}
+            <strong>
+              {tabSwitches}
+            </strong>
+
+          </div>
+        )}
+
+        {examMessage && (
+          <div className="error-message">
+            {examMessage}
+          </div>
+        )}
 
         <section className="question-card">
 
@@ -1480,18 +1646,17 @@ function ExamPage({
 
                 <button
                   key={letter}
+                  type="button"
                   className={
-                    answers[
-                      question.id
-                    ] === letter
+                    answers[question.id] ===
+                    letter
                       ? "option selected"
                       : "option"
                   }
                   onClick={() =>
-                    selectAnswer(
-                      letter
-                    )
+                    selectAnswer(letter)
                   }
+                  disabled={submitting}
                 >
 
                   <span className="option-letter">
@@ -1502,15 +1667,13 @@ function ExamPage({
                     {text}
                   </span>
 
-                  {
-                    answers[
-                      question.id
-                    ] === letter && (
-                      <span className="selected-check">
-                        ✓
-                      </span>
-                    )
-                  }
+                  {answers[
+                    question.id
+                  ] === letter && (
+                    <span className="selected-check">
+                      âœ“
+                    </span>
+                  )}
 
                 </button>
 
@@ -1524,9 +1687,11 @@ function ExamPage({
         <div className="question-navigation">
 
           <button
+            type="button"
             className="nav-button"
             disabled={
-              currentQuestion === 0
+              currentQuestion === 0 ||
+              submitting
             }
             onClick={() =>
               setCurrentQuestion(
@@ -1534,7 +1699,7 @@ function ExamPage({
               )
             }
           >
-            ← Previous
+            â† Previous
           </button>
 
           <div className="question-dots">
@@ -1543,14 +1708,13 @@ function ExamPage({
               (item, index) => (
 
                 <button
+                  type="button"
                   key={item.id}
                   className={
                     index ===
                     currentQuestion
                       ? "dot active"
-                      : answers[
-                          item.id
-                        ]
+                      : answers[item.id]
                       ? "dot answered"
                       : "dot"
                   }
@@ -1559,6 +1723,7 @@ function ExamPage({
                       index
                     )
                   }
+                  disabled={submitting}
                 >
                   {index + 1}
                 </button>
@@ -1568,20 +1733,47 @@ function ExamPage({
 
           </div>
 
-          <button
-            className="nav-button"
-            disabled={
-              currentQuestion ===
-              questions.length - 1
-            }
-            onClick={() =>
-              setCurrentQuestion(
-                (q) => q + 1
-              )
-            }
-          >
-            Next →
-          </button>
+          {currentQuestion <
+          questions.length - 1 ? (
+
+            <button
+              type="button"
+              className="nav-button"
+              disabled={submitting}
+              onClick={() =>
+                setCurrentQuestion(
+                  (q) => q + 1
+                )
+              }
+            >
+              Next â†’
+            </button>
+
+          ) : (
+
+            <button
+              type="button"
+              className="submit-button"
+              disabled={submitting}
+              onClick={() => {
+
+                const confirmSubmit =
+                  window.confirm(
+                    `You answered ${answeredCount} out of ${questions.length} questions. Submit examination?`
+                  );
+
+                if (confirmSubmit) {
+                  handleSubmitExam(false);
+                }
+
+              }}
+            >
+              {submitting
+                ? "Submitting..."
+                : "Submit Examination âœ“"}
+            </button>
+
+          )}
 
         </div>
 
@@ -1592,3 +1784,6 @@ function ExamPage({
 }
 
 export default App;
+
+
+
