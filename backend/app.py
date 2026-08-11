@@ -1,7 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, session
 from flask_cors import CORS
 
 from config import Config
+from models.db import get_connection
 
 from routes.auth import auth_bp
 from routes.admin import admin_bp
@@ -22,10 +23,9 @@ def create_app():
     app.config["SECRET_KEY"] = Config.SECRET_KEY
 
     # Session cookie configuration
-    #
     # Required because React frontend and
     # Render backend are on different domains.
-    #
+
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "None"
     app.config["SESSION_COOKIE_SECURE"] = True
@@ -38,8 +38,17 @@ def create_app():
         app,
         origins=Config.CORS_ORIGINS,
         supports_credentials=True,
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"]
+        methods=[
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+        ],
+        allow_headers=[
+            "Content-Type",
+            "Authorization"
+        ]
     )
 
     # ==========================================
@@ -79,19 +88,92 @@ def create_app():
         })
 
     # ==========================================
+    # DATABASE CONNECTION TEST
+    # ==========================================
+
+    @app.route("/api/db-test")
+    def db_test():
+
+        connection = None
+
+        try:
+
+            connection = get_connection()
+
+            with connection.cursor() as cursor:
+
+                cursor.execute(
+                    "SELECT 1 AS test"
+                )
+
+                result = cursor.fetchone()
+
+            return jsonify({
+
+                "success": True,
+
+                "message":
+                    "Aiven MySQL connection successful",
+
+                "database_test": result
+
+            })
+
+        except Exception as error:
+
+            print(
+                "DATABASE TEST ERROR:",
+                error
+            )
+
+            return jsonify({
+
+                "success": False,
+
+                "message":
+                    "Aiven MySQL connection failed",
+
+                "error": str(error)
+
+            }), 500
+
+        finally:
+
+            if connection:
+
+                connection.close()
+
+    # ==========================================
     # SESSION TEST
     # ==========================================
 
     @app.route("/api/test-session")
     def test_session():
 
-        from flask import session
-
         return jsonify({
+
             "success": True,
-            "logged_in": bool(session.get("student_id")),
-            "student_id": session.get("student_id")
+
+            "logged_in":
+                bool(session.get("user_id")),
+
+            "user_id":
+                session.get("user_id"),
+
+            "role":
+                session.get("role"),
+
+            "name":
+                session.get("name"),
+
+            "email":
+                session.get("email")
+
         })
+
+    # ==========================================
+    # RETURN APPLICATION
+    # ==========================================
 
     return app
 
