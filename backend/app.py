@@ -92,56 +92,64 @@ def create_app():
     # ==========================================
 
     @app.route("/api/db-test")
-    def db_test():
+def db_test():
 
-        connection = None
+    connection = None
 
-        try:
+    try:
 
-            connection = get_connection()
+        connection = get_connection()
 
-            with connection.cursor() as cursor:
+        with connection.cursor() as cursor:
 
-                cursor.execute(
-                    "SELECT 1 AS test"
-                )
-
-                result = cursor.fetchone()
-
-            return jsonify({
-
-                "success": True,
-
-                "message":
-                    "Aiven MySQL connection successful",
-
-                "database_test": result
-
-            })
-
-        except Exception as error:
-
-            print(
-                "DATABASE TEST ERROR:",
-                error
+            # Check which database is currently selected
+            cursor.execute(
+                "SELECT DATABASE() AS database_name"
             )
 
-            return jsonify({
+            database_result = cursor.fetchone()
 
-                "success": False,
+            # Check available tables
+            cursor.execute(
+                "SHOW TABLES"
+            )
 
-                "message":
-                    "Aiven MySQL connection failed",
+            tables_result = cursor.fetchall()
 
-                "error": str(error)
+        return jsonify({
 
-            }), 500
+            "success": True,
 
-        finally:
+            "message": "Aiven MySQL connection successful",
 
-            if connection:
+            "database": database_result["database_name"],
 
-                connection.close()
+            "tables": tables_result
+
+        })
+
+    except Exception as error:
+
+        print(
+            "DATABASE TEST ERROR:",
+            error
+        )
+
+        return jsonify({
+
+            "success": False,
+
+            "message": "Database connection failed",
+
+            "error": str(error)
+
+        }), 500
+
+    finally:
+
+        if connection:
+
+            connection.close()
 
     # ==========================================
     # SESSION TEST
