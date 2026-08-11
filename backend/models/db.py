@@ -12,5 +12,6 @@ def get_connection():
         password=Config.DB_PASSWORD,
         database=Config.DB_NAME,
         cursorclass=pymysql.cursors.DictCursor,
-        autocommit=False
+        autocommit=False,
+        ssl={"ssl": {}}
     )
