@@ -11,9 +11,10 @@ admin_bp = Blueprint(
 )
 
 
-# ---------------------------------------
-# Dashboard Statistics
-# ---------------------------------------
+# ============================================================
+# DASHBOARD STATISTICS
+# ============================================================
+
 @admin_bp.route("/dashboard", methods=["GET"])
 @admin_required
 def dashboard():
@@ -23,14 +24,19 @@ def dashboard():
     try:
         with connection.cursor() as cursor:
 
-            cursor.execute("SELECT COUNT(*) AS total_students FROM student")
+            cursor.execute(
+                "SELECT COUNT(*) AS total_students FROM student"
+            )
             students = cursor.fetchone()
 
-            cursor.execute("SELECT COUNT(*) AS total_exams FROM exam")
+            cursor.execute(
+                "SELECT COUNT(*) AS total_exams FROM exam"
+            )
             exams = cursor.fetchone()
 
             cursor.execute(
-                "SELECT COUNT(*) AS active_exams FROM exam WHERE is_active = TRUE"
+                "SELECT COUNT(*) AS active_exams "
+                "FROM exam WHERE is_active = TRUE"
             )
             active_exams = cursor.fetchone()
 
@@ -53,9 +59,10 @@ def dashboard():
         connection.close()
 
 
-# ---------------------------------------
-# Get All Students
-# ---------------------------------------
+# ============================================================
+# GET ALL STUDENTS
+# ============================================================
+
 @admin_bp.route("/students", methods=["GET"])
 @admin_required
 def get_students():
@@ -87,9 +94,10 @@ def get_students():
         connection.close()
 
 
-# ---------------------------------------
-# Get Single Student
-# ---------------------------------------
+# ============================================================
+# GET SINGLE STUDENT
+# ============================================================
+
 @admin_bp.route("/students/<int:student_id>", methods=["GET"])
 @admin_required
 def get_student(student_id):
@@ -113,6 +121,7 @@ def get_student(student_id):
             student = cursor.fetchone()
 
         if not student:
+
             return jsonify({
                 "success": False,
                 "message": "Student not found"
@@ -127,9 +136,10 @@ def get_student(student_id):
         connection.close()
 
 
-# ---------------------------------------
-# Add Student
-# ---------------------------------------
+# ============================================================
+# ADD STUDENT
+# ============================================================
+
 @admin_bp.route("/students", methods=["POST"])
 @admin_required
 def add_student():
@@ -137,11 +147,12 @@ def add_student():
     data = request.get_json() or {}
 
     name = data.get("name", "").strip()
-    email = data.get("email", "").strip()
+    email = data.get("email", "").strip().lower()
     password = data.get("password", "")
     phone = data.get("phone", "").strip()
 
     if not name or not email or not password:
+
         return jsonify({
             "success": False,
             "message": "Name, email and password are required"
@@ -160,6 +171,7 @@ def add_student():
             existing = cursor.fetchone()
 
             if existing:
+
                 return jsonify({
                     "success": False,
                     "message": "Student email already exists"
@@ -180,6 +192,8 @@ def add_student():
 
             student_id = cursor.lastrowid
 
+        connection.commit()
+
         return jsonify({
             "success": True,
             "message": "Student created successfully",
@@ -190,9 +204,10 @@ def add_student():
         connection.close()
 
 
-# ---------------------------------------
-# Update Student
-# ---------------------------------------
+# ============================================================
+# UPDATE STUDENT
+# ============================================================
+
 @admin_bp.route("/students/<int:student_id>", methods=["PUT"])
 @admin_required
 def update_student(student_id):
@@ -200,10 +215,11 @@ def update_student(student_id):
     data = request.get_json() or {}
 
     name = data.get("name", "").strip()
-    email = data.get("email", "").strip()
+    email = data.get("email", "").strip().lower()
     phone = data.get("phone", "").strip()
 
     if not name or not email:
+
         return jsonify({
             "success": False,
             "message": "Name and email are required"
@@ -222,6 +238,7 @@ def update_student(student_id):
             student = cursor.fetchone()
 
             if not student:
+
                 return jsonify({
                     "success": False,
                     "message": "Student not found"
@@ -230,12 +247,17 @@ def update_student(student_id):
             cursor.execute("""
                 SELECT id
                 FROM student
-                WHERE email = %s AND id != %s
-            """, (email, student_id))
+                WHERE email = %s
+                  AND id != %s
+            """, (
+                email,
+                student_id
+            ))
 
             duplicate = cursor.fetchone()
 
             if duplicate:
+
                 return jsonify({
                     "success": False,
                     "message": "Email already belongs to another student"
@@ -243,7 +265,8 @@ def update_student(student_id):
 
             cursor.execute("""
                 UPDATE student
-                SET name = %s,
+                SET
+                    name = %s,
                     email = %s,
                     phone = %s
                 WHERE id = %s
@@ -254,6 +277,8 @@ def update_student(student_id):
                 student_id
             ))
 
+        connection.commit()
+
         return jsonify({
             "success": True,
             "message": "Student updated successfully"
@@ -263,9 +288,10 @@ def update_student(student_id):
         connection.close()
 
 
-# ---------------------------------------
-# Delete Student
-# ---------------------------------------
+# ============================================================
+# DELETE STUDENT
+# ============================================================
+
 @admin_bp.route("/students/<int:student_id>", methods=["DELETE"])
 @admin_required
 def delete_student(student_id):
@@ -283,6 +309,7 @@ def delete_student(student_id):
             student = cursor.fetchone()
 
             if not student:
+
                 return jsonify({
                     "success": False,
                     "message": "Student not found"
@@ -293,9 +320,149 @@ def delete_student(student_id):
                 (student_id,)
             )
 
+        connection.commit()
+
         return jsonify({
             "success": True,
             "message": "Student deleted successfully"
+        })
+
+    finally:
+        connection.close()
+
+
+# ============================================================
+# GET ALL EXAMINATION ATTEMPTS / RESULTS
+# ============================================================
+
+@admin_bp.route("/attempts", methods=["GET"])
+@admin_required
+def get_attempts():
+
+    connection = get_connection()
+
+    try:
+        with connection.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT
+                    ea.id AS attempt_id,
+                    ea.student_id,
+                    s.name AS student_name,
+                    s.email AS student_email,
+
+                    ea.exam_id,
+                    e.title AS exam_title,
+
+                    ea.question_set,
+
+                    ea.total_questions,
+                    ea.score,
+
+                    CASE
+                        WHEN ea.total_questions > 0
+                        THEN ROUND(
+                            (ea.score / ea.total_questions) * 100,
+                            2
+                        )
+                        ELSE 0
+                    END AS percentage,
+
+                    ea.status,
+                    ea.start_time,
+                    ea.end_time
+
+                FROM exam_attempt ea
+
+                INNER JOIN student s
+                    ON s.id = ea.student_id
+
+                INNER JOIN exam e
+                    ON e.id = ea.exam_id
+
+                ORDER BY ea.id DESC
+            """)
+
+            attempts = cursor.fetchall()
+
+        return jsonify({
+            "success": True,
+            "attempts": attempts,
+            "total_attempts": len(attempts)
+        })
+
+    finally:
+        connection.close()
+
+
+# ============================================================
+# GET SINGLE EXAMINATION ATTEMPT
+# ============================================================
+
+@admin_bp.route("/attempts/<int:attempt_id>", methods=["GET"])
+@admin_required
+def get_attempt(attempt_id):
+
+    connection = get_connection()
+
+    try:
+        with connection.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT
+                    ea.id AS attempt_id,
+
+                    ea.student_id,
+                    s.name AS student_name,
+                    s.email AS student_email,
+
+                    ea.exam_id,
+                    e.title AS exam_title,
+
+                    ea.question_set,
+
+                    ea.total_questions,
+                    ea.score,
+
+                    CASE
+                        WHEN ea.total_questions > 0
+                        THEN ROUND(
+                            (ea.score / ea.total_questions) * 100,
+                            2
+                        )
+                        ELSE 0
+                    END AS percentage,
+
+                    ea.status,
+                    ea.start_time,
+                    ea.end_time,
+                    e.duration_minutes
+
+                FROM exam_attempt ea
+
+                INNER JOIN student s
+                    ON s.id = ea.student_id
+
+                INNER JOIN exam e
+                    ON e.id = ea.exam_id
+
+                WHERE ea.id = %s
+
+                LIMIT 1
+            """, (attempt_id,))
+
+            attempt = cursor.fetchone()
+
+        if not attempt:
+
+            return jsonify({
+                "success": False,
+                "message": "Examination attempt not found"
+            }), 404
+
+        return jsonify({
+            "success": True,
+            "attempt": attempt
         })
 
     finally:

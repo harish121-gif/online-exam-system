@@ -1,7 +1,5 @@
 from flask import Blueprint, jsonify, request, session
-
 from models.db import get_connection
-
 
 exam_bp = Blueprint(
     "exam",
@@ -91,14 +89,6 @@ def get_exam(exam_id):
 
 # ============================================================
 # START EXAM
-#
-# Student 1 -> A
-# Student 2 -> B
-# Student 3 -> C
-# Student 4 -> D
-# Student 5 -> A
-# Student 6 -> B
-# ...
 # ============================================================
 
 @exam_bp.route("/<int:exam_id>/start", methods=["POST"])
@@ -157,7 +147,6 @@ def start_exam(exam_id):
                     "message": "This examination is not active"
                 }), 400
 
-
             # ------------------------------------------------
             # CHECK EXISTING ATTEMPT
             # ------------------------------------------------
@@ -167,12 +156,11 @@ def start_exam(exam_id):
                     id,
                     question_set,
                     start_time,
-                    status,
-                    score,
-                    total_questions
+                    status
                 FROM exam_attempt
                 WHERE student_id = %s
                   AND exam_id = %s
+                  AND status = 'in_progress'
                 ORDER BY id DESC
                 LIMIT 1
             """, (
@@ -182,31 +170,89 @@ def start_exam(exam_id):
 
             existing_attempt = cursor.fetchone()
 
+            # ------------------------------------------------
+            # GET AVAILABLE QUESTION SETS
+            # ------------------------------------------------
+
+            cursor.execute("""
+                SELECT DISTINCT question_set
+                FROM question
+                WHERE exam_id = %s
+                ORDER BY question_set
+            """, (exam_id,))
+
+            set_rows = cursor.fetchall()
+
+            sets = [
+                row["question_set"]
+                for row in set_rows
+            ]
+
+            if not sets:
+
+                return jsonify({
+                    "success": False,
+                    "message": "No question sets found for this examination"
+                }), 404
 
             # ------------------------------------------------
-            # CONTINUE CURRENT ATTEMPT
+            # CONTINUE EXISTING ATTEMPT
             # ------------------------------------------------
 
-            if (
-                existing_attempt
-                and existing_attempt["status"] == "in_progress"
-            ):
+            if existing_attempt:
 
                 assigned_set = existing_attempt["question_set"]
                 attempt_id = existing_attempt["id"]
 
-
-            # ------------------------------------------------
-            # CREATE NEW ATTEMPT
-            # ------------------------------------------------
-
             else:
 
-                sets = ["A", "B", "C", "D"]
+                # ------------------------------------------------
+                # ASSIGN QUESTION SET
+                # ------------------------------------------------
 
-                assigned_set = sets[
-                    (student_id - 1) % 4
-                ]
+                # Student 1 -> A
+                # Student 2 -> B
+                # Student 3 -> C
+                # Student 4 -> D
+                # Student 5 -> A
+                # ...
+
+                set_index = (student_id - 1) % len(sets)
+
+                assigned_set = sets[set_index]
+
+                # ------------------------------------------------
+                # GET QUESTIONS FOR ASSIGNED SET
+                # ------------------------------------------------
+
+                cursor.execute("""
+                    SELECT COUNT(*) AS question_count
+                    FROM question
+                    WHERE exam_id = %s
+                      AND question_set = %s
+                """, (
+                    exam_id,
+                    assigned_set
+                ))
+
+                question_count = cursor.fetchone()
+
+                if (
+                    not question_count
+                    or question_count["question_count"] == 0
+                ):
+
+                    return jsonify({
+                        "success": False,
+                        "message": (
+                            "No questions found for Set "
+                            + str(assigned_set)
+                        )
+                    }), 404
+
+                # ------------------------------------------------
+                # CREATE NEW ATTEMPT
+                # ------------------------------------------------
 
                 cursor.execute("""
                     INSERT INTO exam_attempt
@@ -214,24 +260,20 @@ def start_exam(exam_id):
                         student_id,
                         exam_id,
                         question_set,
-                        start_time,
-                        score,
                         total_questions,
-                        tab_switch_count,
-                        copy_paste_count,
-                        status
+                        start_time,
+                        status,
+                        score
                     )
                     VALUES
                     (
                         %s,
                         %s,
                         %s,
-                        NOW(),
-                        0,
                         %s,
-                        0,
-                        0,
-                        'in_progress'
+                        NOW(),
+                        'in_progress',
+                        0
                     )
                 """, (
                     student_id,
@@ -240,16 +282,12 @@ def start_exam(exam_id):
                     exam["total_questions"]
                 ))
 
-                attempt_id = cursor.lastrowid
-
                 connection.commit()
 
+                attempt_id = cursor.lastrowid
 
             # ------------------------------------------------
             # GET QUESTIONS
-            #
-            # IMPORTANT:
-            # correct_option is NOT sent to frontend.
             # ------------------------------------------------
 
             cursor.execute("""
@@ -277,43 +315,24 @@ def start_exam(exam_id):
 
             questions = cursor.fetchall()
 
-
-        # ----------------------------------------------------
-        # VERIFY QUESTION COUNT
-        # ----------------------------------------------------
-
-        if len(questions) < exam["total_questions"]:
+        if not questions:
 
             return jsonify({
                 "success": False,
                 "message": (
-                    f"Only {len(questions)} questions found "
-                    f"for Set {assigned_set}. "
-                    f"Expected {exam['total_questions']}."
+                    "No questions found for Set "
+                    + str(assigned_set)
                 )
-            }), 400
-
-
-        # ----------------------------------------------------
-        # SUCCESS
-        # ----------------------------------------------------
+            }), 404
 
         return jsonify({
-
             "success": True,
-
             "message": "Examination started successfully",
-
             "attempt_id": attempt_id,
-
             "question_set": assigned_set,
-
             "exam": exam,
-
             "questions": questions
-
         })
-
 
     except Exception as error:
 
@@ -322,15 +341,10 @@ def start_exam(exam_id):
         print("START EXAM ERROR:", error)
 
         return jsonify({
-
             "success": False,
-
             "message": "Unable to start examination",
-
             "error": str(error)
-
         }), 500
-
 
     finally:
 
@@ -338,35 +352,50 @@ def start_exam(exam_id):
 
 
 # ============================================================
-# GET QUESTIONS BY SET
+# GET QUESTIONS
 #
-# Testing endpoint
-#
-# /api/exam/1/questions?set=A
+# Example:
+# GET /api/exam/2/questions?set=A
 # ============================================================
 
 @exam_bp.route("/<int:exam_id>/questions", methods=["GET"])
-def get_questions(exam_id):
+def get_exam_questions(exam_id):
 
-    question_set = request.args.get(
-        "set",
-        "A"
-    ).upper()
-
-
-    if question_set not in ["A", "B", "C", "D"]:
-
-        return jsonify({
-            "success": False,
-            "message": "Invalid question set"
-        }), 400
-
+    question_set = request.args.get("set", "A").upper()
 
     connection = get_connection()
 
     try:
 
         with connection.cursor() as cursor:
+
+            # ------------------------------------------------
+            # GET EXAM
+            # ------------------------------------------------
+
+            cursor.execute("""
+                SELECT
+                    id,
+                    title,
+                    total_questions,
+                    duration_minutes,
+                    is_active
+                FROM exam
+                WHERE id = %s
+            """, (exam_id,))
+
+            exam = cursor.fetchone()
+
+            if not exam:
+
+                return jsonify({
+                    "success": False,
+                    "message": "Exam not found"
+                }), 404
+
+            # ------------------------------------------------
+            # GET QUESTIONS
+            # ------------------------------------------------
 
             cursor.execute("""
                 SELECT
@@ -384,50 +413,22 @@ def get_questions(exam_id):
                 WHERE exam_id = %s
                   AND question_set = %s
                 ORDER BY id
+                LIMIT %s
             """, (
                 exam_id,
-                question_set
+                question_set,
+                exam["total_questions"]
             ))
 
             questions = cursor.fetchall()
 
-
-            cursor.execute("""
-                SELECT
-                    id,
-                    title,
-                    total_questions,
-                    duration_minutes,
-                    is_active
-                FROM exam
-                WHERE id = %s
-            """, (exam_id,))
-
-            exam = cursor.fetchone()
-
-
-        if not exam:
-
-            return jsonify({
-                "success": False,
-                "message": "Exam not found"
-            }), 404
-
-
         return jsonify({
-
             "success": True,
-
             "exam": exam,
-
             "question_set": question_set,
-
             "total_questions": len(questions),
-
             "questions": questions
-
         })
-
 
     finally:
 
@@ -439,24 +440,19 @@ def get_questions(exam_id):
 #
 # POST /api/exam/<exam_id>/submit
 #
-# Request body:
+# Body:
 #
 # {
-#     "attempt_id": 1,
+#     "attempt_id": 7,
 #     "answers": {
-#         "101": "A",
-#         "102": "C",
-#         "103": "B"
+#         "205": "B",
+#         "206": "A"
 #     }
 # }
 # ============================================================
 
 @exam_bp.route("/<int:exam_id>/submit", methods=["POST"])
 def submit_exam(exam_id):
-
-    # --------------------------------------------------------
-    # CHECK STUDENT SESSION
-    # --------------------------------------------------------
 
     if (
         "user_id" not in session
@@ -468,19 +464,12 @@ def submit_exam(exam_id):
             "message": "Student login required"
         }), 401
 
-
     student_id = session["user_id"]
-
-
-    # --------------------------------------------------------
-    # GET REQUEST DATA
-    # --------------------------------------------------------
 
     data = request.get_json() or {}
 
     attempt_id = data.get("attempt_id")
     answers = data.get("answers", {})
-
 
     if not attempt_id:
 
@@ -489,14 +478,12 @@ def submit_exam(exam_id):
             "message": "Attempt ID is required"
         }), 400
 
-
     if not isinstance(answers, dict):
 
         return jsonify({
             "success": False,
             "message": "Answers must be an object"
         }), 400
-
 
     connection = get_connection()
 
@@ -515,9 +502,8 @@ def submit_exam(exam_id):
                     exam_id,
                     question_set,
                     start_time,
-                    end_time,
-                    score,
                     total_questions,
+                    score,
                     status
                 FROM exam_attempt
                 WHERE id = %s
@@ -531,7 +517,6 @@ def submit_exam(exam_id):
 
             attempt = cursor.fetchone()
 
-
             if not attempt:
 
                 return jsonify({
@@ -539,28 +524,18 @@ def submit_exam(exam_id):
                     "message": "Exam attempt not found"
                 }), 404
 
-
-            # ------------------------------------------------
-            # PREVENT DOUBLE SUBMISSION
-            # ------------------------------------------------
-
             if attempt["status"] != "in_progress":
 
                 return jsonify({
                     "success": False,
                     "message": "This examination has already been submitted",
                     "score": attempt["score"],
+                    "total_questions": attempt["total_questions"],
                     "status": attempt["status"]
                 }), 400
 
-
-            assigned_set = attempt["question_set"]
-
-
             # ------------------------------------------------
             # GET CORRECT ANSWERS
-            #
-            # These answers stay on the backend.
             # ------------------------------------------------
 
             cursor.execute("""
@@ -573,44 +548,65 @@ def submit_exam(exam_id):
                 ORDER BY id
                 LIMIT %s
             """, (
-                exam_id,
-                assigned_set,
+                attempt["exam_id"],
+                attempt["question_set"],
                 attempt["total_questions"]
             ))
 
-            questions = cursor.fetchall()
-
-
-            # ------------------------------------------------
-            # CALCULATE SCORE
-            # ------------------------------------------------
+            question_rows = cursor.fetchall()
 
             score = 0
             answered_count = 0
 
+            # ------------------------------------------------
+            # AUTO EVALUATION
+            # ------------------------------------------------
 
-            for question in questions:
+            for question in question_rows:
 
                 question_id = str(question["id"])
 
-                submitted_answer = answers.get(question_id)
+                selected_answer = answers.get(question_id)
 
-                if submitted_answer:
+                # Support integer keys converted to string
+                if selected_answer is None:
+                    selected_answer = answers.get(
+                        question["id"]
+                    )
+
+                if selected_answer:
 
                     answered_count += 1
 
-                    submitted_answer = str(
-                        submitted_answer
-                    ).upper().strip()
+                    selected_answer = str(
+                        selected_answer
+                    ).strip().upper()
 
                     correct_answer = str(
                         question["correct_option"]
-                    ).upper().strip()
+                    ).strip().upper()
 
-                    if submitted_answer == correct_answer:
+                    if selected_answer == correct_answer:
 
                         score += 1
 
+            # ------------------------------------------------
+            # CALCULATE PERCENTAGE
+            # ------------------------------------------------
+
+            total_questions = attempt["total_questions"]
+
+            percentage = 0
+
+            if total_questions > 0:
+
+                percentage = round(
+                    (
+                        score
+                        / total_questions
+                    ) * 100,
+                    2
+                )
 
             # ------------------------------------------------
             # UPDATE ATTEMPT
@@ -619,69 +615,33 @@ def submit_exam(exam_id):
             cursor.execute("""
                 UPDATE exam_attempt
                 SET
-                    end_time = NOW(),
                     score = %s,
-                    status = 'submitted'
+                    status = 'submitted',
+                    end_time = NOW()
                 WHERE id = %s
-                  AND student_id = %s
-                  AND exam_id = %s
             """, (
                 score,
-                attempt_id,
-                student_id,
-                exam_id
+                attempt_id
             ))
-
 
             connection.commit()
 
-
-        # ----------------------------------------------------
-        # RESULT
-        # ----------------------------------------------------
-
-        total_questions = len(questions)
-
-        percentage = 0
-
-        if total_questions > 0:
-
-            percentage = round(
-                (score / total_questions) * 100,
-                2
-            )
-
-
         return jsonify({
-
             "success": True,
-
             "message": "Examination submitted successfully",
-
             "attempt_id": attempt_id,
-
             "student_id": student_id,
-
             "exam_id": exam_id,
-
-            "question_set": assigned_set,
-
+            "question_set": attempt["question_set"],
             "score": score,
-
             "total_questions": total_questions,
-
+            "percentage": percentage,
             "answered_questions": answered_count,
-
             "unanswered_questions": (
                 total_questions - answered_count
             ),
-
-            "percentage": percentage,
-
             "status": "submitted"
-
         })
-
 
     except Exception as error:
 
@@ -690,15 +650,10 @@ def submit_exam(exam_id):
         print("SUBMIT EXAM ERROR:", error)
 
         return jsonify({
-
             "success": False,
-
             "message": "Unable to submit examination",
-
             "error": str(error)
-
         }), 500
-
 
     finally:
 
@@ -706,17 +661,13 @@ def submit_exam(exam_id):
 
 
 # ============================================================
-# GET EXAM RESULT
+# GET STUDENT EXAM RESULT
 #
 # GET /api/exam/<exam_id>/result
 # ============================================================
 
 @exam_bp.route("/<int:exam_id>/result", methods=["GET"])
-def get_result(exam_id):
-
-    # --------------------------------------------------------
-    # CHECK STUDENT SESSION
-    # --------------------------------------------------------
+def get_exam_result(exam_id):
 
     if (
         "user_id" not in session
@@ -727,7 +678,6 @@ def get_result(exam_id):
             "success": False,
             "message": "Student login required"
         }), 401
-
 
     student_id = session["user_id"]
 
@@ -768,17 +718,12 @@ def get_result(exam_id):
 
             result = cursor.fetchone()
 
-
         if not result:
 
             return jsonify({
-
                 "success": False,
-
                 "message": "No examination attempt found"
-
             }), 404
-
 
         percentage = 0
 
@@ -792,45 +737,25 @@ def get_result(exam_id):
                 2
             )
 
-
         return jsonify({
-
             "success": True,
-
             "result": {
-
                 "attempt_id": result["attempt_id"],
-
                 "student_id": result["student_id"],
-
                 "student_name": result["student_name"],
-
                 "student_email": result["student_email"],
-
                 "exam_id": result["exam_id"],
-
                 "exam_title": result["exam_title"],
-
                 "question_set": result["question_set"],
-
                 "start_time": result["start_time"],
-
                 "end_time": result["end_time"],
-
                 "score": result["score"],
-
                 "total_questions": result["total_questions"],
-
                 "percentage": percentage,
-
                 "status": result["status"],
-
                 "duration_minutes": result["duration_minutes"]
-
             }
-
         })
-
 
     finally:
 
@@ -839,6 +764,8 @@ def get_result(exam_id):
 
 # ============================================================
 # CREATE EXAM
+#
+# POST /api/exam/
 # ============================================================
 
 @exam_bp.route("/", methods=["POST"])
@@ -846,35 +773,32 @@ def create_exam():
 
     data = request.get_json() or {}
 
-
     title = data.get(
         "title",
         ""
     ).strip()
-
 
     total_questions = data.get(
         "total_questions",
         30
     )
 
-
     duration_minutes = data.get(
         "duration_minutes",
         30
     )
 
+    is_active = data.get(
+        "is_active",
+        1
+    )
 
     if not title:
 
         return jsonify({
-
             "success": False,
-
             "message": "Exam title is required"
-
         }), 400
-
 
     connection = get_connection()
 
@@ -887,10 +811,12 @@ def create_exam():
                 (
                     title,
                     total_questions,
-                    duration_minutes
+                    duration_minutes,
+                    is_active
                 )
                 VALUES
                 (
+                    %s,
                     %s,
                     %s,
                     %s
@@ -898,25 +824,258 @@ def create_exam():
             """, (
                 title,
                 total_questions,
-                duration_minutes
+                duration_minutes,
+                is_active
             ))
-
 
             connection.commit()
 
             new_id = cursor.lastrowid
 
-
         return jsonify({
-
             "success": True,
-
             "message": "Exam created successfully",
-
             "exam_id": new_id
-
         }), 201
 
+    except Exception as error:
+
+        connection.rollback()
+
+        print("CREATE EXAM ERROR:", error)
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to create examination",
+            "error": str(error)
+        }), 500
+
+    finally:
+
+        connection.close()
+
+
+# ============================================================
+# UPDATE EXAM
+#
+# PUT /api/exam/<exam_id>
+# ============================================================
+
+@exam_bp.route("/<int:exam_id>", methods=["PUT"])
+def update_exam(exam_id):
+
+    data = request.get_json() or {}
+
+    title = data.get(
+        "title",
+        ""
+    ).strip()
+
+    total_questions = data.get(
+        "total_questions"
+    )
+
+    duration_minutes = data.get(
+        "duration_minutes"
+    )
+
+    is_active = data.get(
+        "is_active"
+    )
+
+    # --------------------------------------------------------
+    # VALIDATION
+    # --------------------------------------------------------
+
+    if not title:
+
+        return jsonify({
+            "success": False,
+            "message": "Exam title is required"
+        }), 400
+
+    if total_questions is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Total questions is required"
+        }), 400
+
+    if duration_minutes is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Duration is required"
+        }), 400
+
+    if is_active is None:
+
+        is_active = 1
+
+    connection = get_connection()
+
+    try:
+
+        with connection.cursor() as cursor:
+
+            # ------------------------------------------------
+            # CHECK EXAM
+            # ------------------------------------------------
+
+            cursor.execute("""
+                SELECT id
+                FROM exam
+                WHERE id = %s
+            """, (exam_id,))
+
+            exam = cursor.fetchone()
+
+            if not exam:
+
+                return jsonify({
+                    "success": False,
+                    "message": "Exam not found"
+                }), 404
+
+            # ------------------------------------------------
+            # UPDATE EXAM
+            # ------------------------------------------------
+
+            cursor.execute("""
+                UPDATE exam
+                SET
+                    title = %s,
+                    total_questions = %s,
+                    duration_minutes = %s,
+                    is_active = %s
+                WHERE id = %s
+            """, (
+                title,
+                total_questions,
+                duration_minutes,
+                is_active,
+                exam_id
+            ))
+
+            connection.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Exam updated successfully",
+            "exam_id": exam_id
+        })
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print("UPDATE EXAM ERROR:", error)
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to update examination",
+            "error": str(error)
+        }), 500
+
+    finally:
+
+        connection.close()
+
+
+# ============================================================
+# DELETE EXAM
+#
+# DELETE /api/exam/<exam_id>
+# ============================================================
+
+@exam_bp.route("/<int:exam_id>", methods=["DELETE"])
+def delete_exam(exam_id):
+
+    connection = get_connection()
+
+    try:
+
+        with connection.cursor() as cursor:
+
+            # ------------------------------------------------
+            # CHECK EXAM
+            # ------------------------------------------------
+
+            cursor.execute("""
+                SELECT id
+                FROM exam
+                WHERE id = %s
+            """, (exam_id,))
+
+            exam = cursor.fetchone()
+
+            if not exam:
+
+                return jsonify({
+                    "success": False,
+                    "message": "Exam not found"
+                }), 404
+
+            # ------------------------------------------------
+            # CHECK ATTEMPTS
+            # ------------------------------------------------
+
+            cursor.execute("""
+                SELECT COUNT(*) AS total_attempts
+                FROM exam_attempt
+                WHERE exam_id = %s
+            """, (exam_id,))
+
+            attempts = cursor.fetchone()
+
+            if attempts["total_attempts"] > 0:
+
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        "Exam cannot be deleted because "
+                        "student attempts already exist"
+                    ),
+                    "total_attempts": attempts["total_attempts"]
+                }), 409
+
+            # ------------------------------------------------
+            # DELETE QUESTIONS
+            # ------------------------------------------------
+
+            cursor.execute("""
+                DELETE FROM question
+                WHERE exam_id = %s
+            """, (exam_id,))
+
+            # ------------------------------------------------
+            # DELETE EXAM
+            # ------------------------------------------------
+
+            cursor.execute("""
+                DELETE FROM exam
+                WHERE id = %s
+            """, (exam_id,))
+
+            connection.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Exam deleted successfully",
+            "exam_id": exam_id
+        })
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print("DELETE EXAM ERROR:", error)
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to delete examination",
+            "error": str(error)
+        }), 500
 
     finally:
 

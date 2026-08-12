@@ -38,6 +38,7 @@ def bulk_create_questions():
     connection = get_connection()
 
     try:
+
         with connection.cursor() as cursor:
 
             inserted = 0
@@ -54,6 +55,10 @@ def bulk_create_questions():
                 correct_option = question.get("correct_option")
                 category = question.get("category")
 
+                # ==========================================
+                # REQUIRED FIELD VALIDATION
+                # ==========================================
+
                 if not all([
                     exam_id,
                     question_set,
@@ -65,53 +70,98 @@ def bulk_create_questions():
                     correct_option,
                     category
                 ]):
+
                     connection.rollback()
 
                     return jsonify({
                         "success": False,
-                        "message": f"Question {index}: missing required field"
+                        "message": (
+                            f"Question {index}: "
+                            "missing required field"
+                        )
                     }), 400
+
+                # ==========================================
+                # QUESTION SET VALIDATION
+                # ==========================================
 
                 if question_set not in valid_sets:
+
                     connection.rollback()
 
                     return jsonify({
                         "success": False,
-                        "message": f"Question {index}: invalid question_set"
+                        "message": (
+                            f"Question {index}: "
+                            "invalid question_set"
+                        )
                     }), 400
+
+                # ==========================================
+                # CORRECT OPTION VALIDATION
+                # ==========================================
 
                 if correct_option not in valid_options:
+
                     connection.rollback()
 
                     return jsonify({
                         "success": False,
-                        "message": f"Question {index}: invalid correct_option"
+                        "message": (
+                            f"Question {index}: "
+                            "invalid correct_option"
+                        )
                     }), 400
+
+                # ==========================================
+                # CATEGORY VALIDATION
+                # ==========================================
 
                 if category not in valid_categories:
+
                     connection.rollback()
 
                     return jsonify({
                         "success": False,
-                        "message": f"Question {index}: invalid category"
+                        "message": (
+                            f"Question {index}: "
+                            "invalid category"
+                        )
                     }), 400
 
+                # ==========================================
+                # CHECK EXAM EXISTS
+                # ==========================================
+
                 cursor.execute(
-                    "SELECT id FROM exam WHERE id = %s",
+                    """
+                    SELECT id
+                    FROM exam
+                    WHERE id = %s
+                    """,
                     (exam_id,)
                 )
 
                 exam = cursor.fetchone()
 
                 if not exam:
+
                     connection.rollback()
 
                     return jsonify({
                         "success": False,
-                        "message": f"Question {index}: exam {exam_id} not found"
+                        "message": (
+                            f"Question {index}: "
+                            f"exam {exam_id} not found"
+                        )
                     }), 404
 
-                cursor.execute("""
+                # ==========================================
+                # INSERT QUESTION
+                # ==========================================
+
+                cursor.execute(
+                    """
                     INSERT INTO question (
                         exam_id,
                         question_set,
@@ -123,20 +173,42 @@ def bulk_create_questions():
                         correct_option,
                         category
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    exam_id,
-                    question_set,
-                    question_text,
-                    option_a,
-                    option_b,
-                    option_c,
-                    option_d,
-                    correct_option,
-                    category
-                ))
+                    VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s
+                    )
+                    """,
+                    (
+                        exam_id,
+                        question_set,
+                        question_text,
+                        option_a,
+                        option_b,
+                        option_c,
+                        option_d,
+                        correct_option,
+                        category
+                    )
+                )
 
                 inserted += 1
+
+            # ==========================================
+            # COMMIT ALL INSERTED QUESTIONS
+            # ==========================================
+
+            connection.commit()
+
+        # ==============================================
+        # SUCCESS RESPONSE
+        # ==============================================
 
         return jsonify({
             "success": True,
@@ -148,6 +220,8 @@ def bulk_create_questions():
 
         connection.rollback()
 
+        print("QUESTION IMPORT ERROR:", e)
+
         return jsonify({
             "success": False,
             "message": "Failed to import questions",
@@ -155,4 +229,5 @@ def bulk_create_questions():
         }), 500
 
     finally:
+
         connection.close()
