@@ -264,6 +264,29 @@ def create_app():
         })
 
     # ============================================================
+    # TEMPORARY ROUTE DEBUG
+    # ============================================================
+
+    @app.route("/api/debug-routes")
+    def debug_routes():
+
+        routes = []
+
+        for rule in app.url_map.iter_rules():
+
+            routes.append({
+                "path": str(rule),
+                "methods": sorted(
+                    list(rule.methods - {"HEAD", "OPTIONS"})
+                )
+            })
+
+        return jsonify({
+            "success": True,
+            "routes": routes
+        })
+
+    # ============================================================
     # RETURN APP
     # ============================================================
 
