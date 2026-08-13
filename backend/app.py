@@ -1,4 +1,3 @@
-
 import os
 
 from flask import Flask, jsonify, session
@@ -168,6 +167,76 @@ def create_app():
                 connection.close()
 
     # ============================================================
+    # TEMPORARY DEBUG STUDENT
+    # ============================================================
+    #
+    # IMPORTANT:
+    # This endpoint is ONLY for debugging the login problem.
+    # It exposes the password hash.
+    #
+    # REMOVE THIS ENDPOINT AFTER TESTING.
+    #
+    # ============================================================
+
+    @app.route("/api/debug-student")
+    def debug_student():
+
+        connection = None
+
+        try:
+
+            connection = get_connection()
+
+            with connection.cursor() as cursor:
+
+                cursor.execute(
+                    """
+                    SELECT
+                        id,
+                        name,
+                        email,
+                        phone,
+                        password_hash
+                    FROM student
+                    WHERE email = %s
+                    LIMIT 1
+                    """,
+                    ("harishpro14@gmail.com",)
+                )
+
+                student = cursor.fetchone()
+
+            if not student:
+
+                return jsonify({
+                    "success": False,
+                    "message": "Student not found"
+                }), 404
+
+            return jsonify({
+                "success": True,
+                "student": student
+            })
+
+        except Exception as error:
+
+            print(
+                "DEBUG STUDENT ERROR:",
+                error
+            )
+
+            return jsonify({
+                "success": False,
+                "message": "Database error",
+                "error": str(error)
+            }), 500
+
+        finally:
+
+            if connection:
+                connection.close()
+
+    # ============================================================
     # APPLICATION INFO
     # ============================================================
 
@@ -176,7 +245,10 @@ def create_app():
 
         return jsonify({
             "success": True,
-            "application": "AI-Based Online Examination Monitoring and Integrity System",
+            "application": (
+                "AI-Based Online Examination Monitoring "
+                "and Integrity System"
+            ),
             "version": "Phase 1",
             "environment": (
                 "production"
@@ -190,6 +262,10 @@ def create_app():
                 "SESSION_COOKIE_SAMESITE"
             ]
         })
+
+    # ============================================================
+    # RETURN APP
+    # ============================================================
 
     return app
 
