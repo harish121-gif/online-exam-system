@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import "./App.css";
-const API_URL = "https://examsecure-backend.onrender.com/api";
+const API_URL = "/api";
 
 // =========================================================
 // =========================================================
@@ -35,6 +35,15 @@ function App() {
   const [questions, setQuestions] = useState([]);
   const [questionSet, setQuestionSet] = useState("");
   const [attemptId, setAttemptId] = useState(null);
+  const [result, setResult] = useState(null);
+
+  // Examination state
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [timeLeft, setTimeLeft] = useState(30 * 60);
+  const [tabSwitches, setTabSwitches] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [examMessage, setExamMessage] = useState("");
 
   // =========================================================
   // INITIAL LOAD
@@ -58,6 +67,59 @@ function App() {
       setRememberMe(true);
     }
   }, []);
+
+  // =========================================================
+  // EXAM TIMER
+  // =========================================================
+
+  useEffect(() => {
+    if (page !== "exam") {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((previous) => {
+        if (previous <= 1) {
+          clearInterval(timer);
+          handleSubmitExam(true);
+          return 0;
+        }
+
+        return previous - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [page]);
+
+  // =========================================================
+  // TAB SWITCH DETECTION
+  // =========================================================
+
+  useEffect(() => {
+    if (page !== "exam") {
+      return;
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setTabSwitches((previous) => previous + 1);
+        console.log("Tab switch detected");
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+    };
+  }, [page]);
 
   // =========================================================
   // SESSION CHECK
@@ -97,22 +159,17 @@ async function checkSession() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          credentials: "include",
-
-          body: JSON.stringify({
-            email: email.trim(),
-            password,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/student/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
 
       const data = await response.json();
 
@@ -178,8 +235,7 @@ async function checkSession() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        {
+      const response = await fetch(`${API_URL}/student/register`, {
           method: "POST",
 
           headers: {
@@ -271,12 +327,7 @@ async function logout() {
     setMessage("");
 
     try {
-      const response = await fetch(
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`${API_URL}/exam/2/start`, { method: "POST", credentials: "include" });
 
       const data = await response.json();
 
@@ -341,7 +392,7 @@ async function logout() {
             <div className="brand">
 
               <div className="brand-mark">
-                <span>ðŸŽ“</span>
+                <span>🎓</span>
               </div>
 
               <div>
@@ -427,25 +478,25 @@ async function logout() {
             <div className="feature-strip">
 
               <Feature
-                icon="ðŸ›¡ï¸"
+                icon="🛡️"
                 title="Secure"
                 text="Environment"
               />
 
               <Feature
-                icon="ðŸ§ "
+                icon="🧠"
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="ðŸ“Š"
+                icon="📊"
                 title="Real-time"
                 text="Analytics"
               />
 
               <Feature
-                icon="ðŸ”’"
+                icon="🔒"
                 title="Data"
                 text="Privacy"
               />
@@ -463,7 +514,7 @@ async function logout() {
           <div className="login-card">
 
             <div className="login-cap">
-              <span>ðŸŽ“</span>
+              <span>🎓</span>
             </div>
 
             <h2>
@@ -483,7 +534,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  âœ‰
+                  ✉️
                 </span>
 
                 <input
@@ -507,7 +558,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ðŸ”’
+                  🔒
                 </span>
 
                 <input
@@ -571,7 +622,7 @@ async function logout() {
               >
                 {loading
                   ? "Signing in..."
-                  : "Student Login â†’"}
+                  : "Student Login →"}
               </button>
 
             </form>
@@ -600,7 +651,7 @@ async function logout() {
             <div className="credential-note">
 
               <div className="note-icon">
-                â“˜
+                ℹ️
               </div>
 
               <p>
@@ -612,7 +663,7 @@ async function logout() {
 
             <div className="privacy-note">
 
-              <span>ðŸ›¡ï¸</span>
+              <span>🛡️</span>
 
               Your privacy and security are our priority.
 
@@ -621,7 +672,7 @@ async function logout() {
           </div>
 
           <div className="copyright">
-            Â© 2026 ExamSecure. All rights reserved.
+            Copyright 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -649,7 +700,7 @@ async function logout() {
             <div className="brand">
 
               <div className="brand-mark">
-                <span>ðŸŽ“</span>
+                <span>🎓</span>
               </div>
 
               <div>
@@ -733,25 +784,25 @@ async function logout() {
             <div className="feature-strip">
 
               <Feature
-                icon="ðŸ›¡ï¸"
+                icon="🛡️"
                 title="Secure"
                 text="Registration"
               />
 
               <Feature
-                icon="ðŸŽ“"
+                icon="🎓"
                 title="Student"
                 text="Portal"
               />
 
               <Feature
-                icon="ðŸ§ "
+                icon="🧠"
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="ðŸ”’"
+                icon="🔒"
                 title="Data"
                 text="Privacy"
               />
@@ -769,7 +820,7 @@ async function logout() {
           <div className="login-card register-card">
 
             <div className="login-cap">
-              <span>ðŸŽ“</span>
+              <span>🎓</span>
             </div>
 
             <h2>
@@ -789,7 +840,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ðŸ‘¤
+                  👤
                 </span>
 
                 <input
@@ -813,7 +864,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  âœ‰
+                  ✉️
                 </span>
 
                 <input
@@ -837,7 +888,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ðŸ“±
+                  📱
                 </span>
 
                 <input
@@ -866,7 +917,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ðŸ”’
+                  🔒
                 </span>
 
                 <input
@@ -891,7 +942,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ðŸ”
+                  🔒
                 </span>
 
                 <input
@@ -924,7 +975,7 @@ async function logout() {
               >
                 {loading
                   ? "Creating Account..."
-                  : "Create Account â†’"}
+                  : "Create Account →"}
               </button>
 
             </form>
@@ -947,12 +998,12 @@ async function logout() {
                 setPage("login");
               }}
             >
-              â† Back to Student Login
+              ← Back to Student Login
             </button>
 
             <div className="privacy-note">
 
-              <span>ðŸ›¡ï¸</span>
+              <span>🛡️</span>
 
               Your privacy and security are our priority.
 
@@ -961,7 +1012,7 @@ async function logout() {
           </div>
 
           <div className="copyright">
-            Â© 2026 ExamSecure. All rights reserved.
+            Copyright 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -983,7 +1034,7 @@ async function logout() {
           <div className="portal-brand">
 
             <div className="mini-brand-mark">
-              ðŸŽ“
+              🎓
             </div>
 
             <strong>
@@ -995,7 +1046,7 @@ async function logout() {
           <div className="portal-user">
 
             <div className="user-avatar">
-              ðŸ‘¤
+              👤
             </div>
 
             <span>
@@ -1017,7 +1068,7 @@ async function logout() {
           </div>
 
           <h1>
-            Welcome back, {user?.name}! ðŸ‘‹
+            Welcome back, {user?.name}! 👋
           </h1>
 
           <p className="dashboard-intro">
@@ -1051,7 +1102,7 @@ async function logout() {
               </div>
 
               <div className="card-cap">
-                ðŸŽ“
+                🎓
               </div>
 
             </div>
@@ -1059,29 +1110,29 @@ async function logout() {
             <div className="dashboard-stats">
 
               <Stat
-                icon="ðŸ“"
+                icon="📄"
                 value={
                   questions.length > 0
                     ? questions.length
-                    : "30"
+                    : "20"
                 }
                 label="Questions"
               />
 
               <Stat
-                icon="â±ï¸"
+                icon="⏰"
                 value="30"
                 label="Minutes"
               />
 
               <Stat
-                icon="ðŸŽ¯"
+                icon="🎯"
                 value="Auto"
                 label="Question Set"
               />
 
               <Stat
-                icon="ðŸ“Š"
+                icon="📊"
                 value="Mixed"
                 label="Difficulty"
               />
@@ -1097,19 +1148,19 @@ async function logout() {
               <div className="rules-grid">
 
                 <p>
-                  âœ“ Stable internet connection
+                  ✓ Stable internet connection
                 </p>
 
                 <p>
-                  âœ“ Do not switch browser tabs
+                  ✓ Do not switch browser tabs
                 </p>
 
                 <p>
-                  âœ“ Answer all questions
+                  ✓ Answer all questions
                 </p>
 
                 <p>
-                  âœ“ Timer starts immediately
+                  ✓ Timer starts immediately
                 </p>
 
               </div>
@@ -1129,7 +1180,7 @@ async function logout() {
             >
               {loading
                 ? "Starting Examination..."
-                : "Start Examination â†’"}
+                : "Start Examination →"}
             </button>
 
           </section>
@@ -1142,180 +1193,290 @@ async function logout() {
 
   // =========================================================
   // EXAM PAGE
+  // ===========================================================================================================
+
   // =========================================================
 
-  if (page === "exam") {
+  // =========================================================
+  // =========================================================
+  // RESULT PAGE
+  // =========================================================
+
+  if (page === "result" && result) {
+    const percentage = Number(result.percentage || 0);
+    const score = Number(result.score || 0);
+    const total = Number(result.total_questions || 0);
+
+    let performance = "Needs Improvement";
+
+    if (percentage >= 80) {
+      performance = "Excellent Performance";
+    } else if (percentage >= 60) {
+      performance = "Good Performance";
+    } else if (percentage >= 40) {
+      performance = "Average Performance";
+    }
+
     return (
-      <ExamPage
-        user={user}
-        exam={exam}
-        questions={questions}
-        questionSet={questionSet}
-        attemptId={attemptId}
-        logout={logout}
-        onFinish={() => {
-          setPage("dashboard");
-          setExam(null);
-          setQuestions([]);
-          setQuestionSet("");
-          setAttemptId(null);
-        }}
-      />
+      <div className="app result-page">
+
+        {/* HEADER */}
+        <header className="top-header result-header">
+
+          <div className="brand">
+            <span className="brand-icon" aria-label="ExamSecure logo"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L20 5V11C20 16.2 16.5 20.1 12 22C7.5 20.1 4 16.2 4 11V5L12 2Z" fill="currentColor"/><path d="M8 12L10.5 14.5L16 9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <strong>ExamSecure</strong>
+          </div>
+
+          <div className="header-user">
+            <span className="user-icon" aria-label="User"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21C4.8 16.9 7.5 15 12 15C16.5 15 19.2 16.9 20 21" fill="currentColor"/></svg></span>
+            {user?.name}
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={() => setPage("dashboard")}
+          >
+            Logout
+          </button>
+
+        </header>
+
+        {/* RESULT CONTENT */}
+        <main className="result-main">
+
+          <div className="result-container">
+
+            {/* PAGE TITLE */}
+            <div className="result-title-section">
+
+              <div className="result-label">
+                EXAMINATION RESULT
+              </div>
+
+              <h1>
+                Your Examination is Complete
+              </h1>
+
+              <p>
+                Here is a summary of your examination performance.
+              </p>
+
+            </div>
+
+            {/* HERO RESULT CARD */}
+            <section className="result-hero-card">
+
+              <div className="result-hero-left">
+
+                <div className="success-icon">
+                  ?
+                </div>
+
+                <div>
+                  <div className="completed-badge">
+                    EXAM COMPLETED
+                  </div>
+
+                  <h2>
+                    {result.exam_title}
+                  </h2>
+
+                  <p>
+                    Well done, {result.student_name}!
+                    Your examination has been successfully submitted.
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="question-set-badge">
+                <span>QUESTION SET</span>
+                <strong>{result.question_set}</strong>
+              </div>
+
+            </section>
+
+            {/* SCORE AREA */}
+            <section className="score-dashboard">
+
+              <div className="score-card main-score-card">
+
+                <div className="score-circle">
+
+                  <svg
+                    className="score-ring"
+                    viewBox="0 0 120 120"
+                  >
+                    <circle
+                      className="score-ring-bg"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                    />
+
+                    <circle
+                      className="score-ring-progress"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      style={{
+                        strokeDashoffset:
+                          314 - (314 * percentage) / 100
+                      }}
+                    />
+                  </svg>
+
+                  <div className="score-circle-content">
+                    <strong>{percentage}%</strong>
+                    <span>Score</span>
+                  </div>
+
+                </div>
+
+                <div className="score-main-text">
+
+                  <span className="score-small-label">
+                    YOUR SCORE
+                  </span>
+
+                  <h2>
+                    {score}
+                    <span> / {total}</span>
+                  </h2>
+
+                  <div className="performance-badge">
+                    {performance}
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="score-card">
+
+                <div className="score-card-icon">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 8H16M8 12H16M8 16H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+
+                <span className="score-card-label">
+                  TOTAL QUESTIONS
+                </span>
+
+                <strong>
+                  {total}
+                </strong>
+
+                <p>
+                  Questions attempted
+                </p>
+
+              </div>
+
+              <div className="score-card">
+
+                <div className="score-card-icon">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 8H16M8 12H16M8 16H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+
+                <span className="score-card-label">
+                  PERCENTAGE
+                </span>
+
+                <strong>
+                  {percentage}%
+                </strong>
+
+                <p>
+                  Overall performance
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* DETAILS */}
+            <section className="result-details-grid">
+
+              <div className="result-info-card">
+
+                <div className="info-card-heading">
+                  <span className="info-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1" fill="currentColor"/></svg></span>
+
+                  <div>
+                    <h3>Student Details</h3>
+                    <p>Candidate information</p>
+                  </div>
+                </div>
+
+                <div className="info-row">
+                  <span>Student Name</span>
+                  <strong>{result.student_name}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Email</span>
+                  <strong>{result.student_email}</strong>
+                </div>
+
+              </div>
+
+              <div className="result-info-card">
+
+                <div className="info-card-heading">
+                  <span className="info-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1" fill="currentColor"/></svg></span>
+
+                  <div>
+                    <h3>Examination Details</h3>
+                    <p>Assessment information</p>
+                  </div>
+                </div>
+
+                <div className="info-row">
+                  <span>Exam</span>
+                  <strong>{result.exam_title}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Question Set</span>
+                  <strong>{result.question_set}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Status</span>
+                  <strong className="status-success">
+                    ? {result.status}
+                  </strong>
+                </div>
+
+              </div>
+
+            </section>
+
+            {/* BOTTOM ACTION */}
+            <div className="result-action">
+
+              <button
+                className="result-back-button"
+                onClick={() => setPage("dashboard")}
+              >
+                ? Back to Student Portal
+              </button>
+
+              <p>
+                Your examination result has been recorded successfully.
+              </p>
+
+            </div>
+
+          </div>
+
+        </main>
+
+      </div>
     );
   }
-
-  return null;
-}
-
-// =========================================================
-// FEATURE COMPONENT
-// =========================================================
-
-function Feature({
-  icon,
-  title,
-  text,
-}) {
-  return (
-    <div className="feature-item">
-
-      <div className="feature-icon">
-        {icon}
-      </div>
-
-      <div>
-
-        <strong>
-          {title}
-        </strong>
-
-        <small>
-          {text}
-        </small>
-
-      </div>
-
-    </div>
-  );
-}
-
-// =========================================================
-// STAT COMPONENT
-// =========================================================
-
-function Stat({
-  icon,
-  value,
-  label,
-}) {
-  return (
-    <div className="stat-item">
-
-      <span>
-        {icon}
-      </span>
-
-      <strong>
-        {value}
-      </strong>
-
-      <small>
-        {label}
-      </small>
-
-    </div>
-  );
-}
-
-// =========================================================
-// EXAM PAGE COMPONENT
-// =========================================================
-
-function ExamPage({
-  user,
-  exam,
-  questions,
-  questionSet,
-  attemptId,
-  logout,
-  onFinish,
-}) {
-  const [currentQuestion, setCurrentQuestion] =
-    useState(0);
-
-  const [answers, setAnswers] =
-    useState({});
-
-  const [timeLeft, setTimeLeft] =
-    useState(
-      (Number(exam?.duration_minutes) || 30) * 60
-    );
-
-  const [submitting, setSubmitting] =
-    useState(false);
-
-  const [examMessage, setExamMessage] =
-    useState("");
-
-  const [tabSwitches, setTabSwitches] =
-    useState(0);
-
-  // =========================================================
-  // TIMER
-  // =========================================================
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((previous) => {
-
-        if (previous <= 1) {
-          clearInterval(timer);
-
-          handleSubmitExam(true);
-
-          return 0;
-        }
-
-        return previous - 1;
-      });
-
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // =========================================================
-  // TAB SWITCH DETECTION
-  // =========================================================
-
-  useEffect(() => {
-    const handleVisibility = () => {
-
-      if (document.hidden) {
-
-        setTabSwitches(
-          (previous) => previous + 1
-        );
-
-        console.log(
-          "Tab switch detected"
-        );
-      }
-    };
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibility
-    );
-
-    return () => {
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibility
-      );
-    };
-  }, []);
-
+  
   // =========================================================
   // SELECT ANSWER
   // =========================================================
@@ -1369,14 +1530,7 @@ function ExamPage({
     setSubmitting(true);
     setExamMessage("");
 
-    const answerList = Object.entries(
-      answers
-    ).map(
-      ([questionId, selectedOption]) => ({
-        question_id: Number(questionId),
-        selected_option: selectedOption,
-      })
-    );
+    const answerList = answers;
 
     const payload = {
       attempt_id: attemptId,
@@ -1398,8 +1552,7 @@ function ExamPage({
        * We try the common Phase-1 endpoint first.
        */
 
-      const response = await fetch(
-        {
+      const response = await fetch(`${API_URL}/exam/${exam.id}/submit`, {
           method: "POST",
 
           headers: {
@@ -1427,7 +1580,8 @@ function ExamPage({
             : "Examination submitted successfully."
         );
 
-        onFinish();
+        setResult(data.result || data);
+        setPage("result");
 
       } else {
 
@@ -1502,7 +1656,7 @@ function ExamPage({
         <div className="portal-brand">
 
           <div className="mini-brand-mark">
-            ðŸŽ“
+            🎓
           </div>
 
           <strong>
@@ -1526,7 +1680,7 @@ function ExamPage({
         <div className="exam-actions">
 
           <div className="exam-user">
-            ðŸ‘¤ {user?.name}
+            👤 {user?.name}
           </div>
 
           <div
@@ -1538,7 +1692,7 @@ function ExamPage({
               }`
             }
           >
-            â± {formatTime(timeLeft)}
+            ⏰ {formatTime(timeLeft)}
           </div>
 
           <button
@@ -1604,7 +1758,7 @@ function ExamPage({
         {tabSwitches > 0 && (
           <div className="monitoring-warning">
 
-            âš ï¸ Tab switches detected:
+            ⚠️ Tab switches detected:
             {" "}
             <strong>
               {tabSwitches}
@@ -1671,7 +1825,7 @@ function ExamPage({
                     question.id
                   ] === letter && (
                     <span className="selected-check">
-                      âœ“
+                      ✓
                     </span>
                   )}
 
@@ -1699,7 +1853,7 @@ function ExamPage({
               )
             }
           >
-            â† Previous
+            ← Previous
           </button>
 
           <div className="question-dots">
@@ -1746,7 +1900,7 @@ function ExamPage({
                 )
               }
             >
-              Next â†’
+              Next →
             </button>
 
           ) : (
@@ -1770,7 +1924,7 @@ function ExamPage({
             >
               {submitting
                 ? "Submitting..."
-                : "Submit Examination âœ“"}
+                : "Submit Examination ✓"}
             </button>
 
           )}
@@ -1784,6 +1938,89 @@ function ExamPage({
 }
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function Feature({
+  icon,
+  title,
+  text,
+}) {
+  return (
+    <div className="feature-item">
+      <div className="feature-icon">
+        {icon}
+      </div>
+
+      <div>
+        <h3>{title}</h3>
+        <p>{text}</p>
+      </div>
+    </div>
+  );
+}
+function Stat({
+  icon,
+  value,
+  label,
+}) {
+  return (
+    <div className="stat-card">
+      <div className="stat-icon">
+        {icon}
+      </div>
+
+      <div className="stat-content">
+        <div className="stat-value">
+          {value}
+        </div>
+
+        <div className="stat-label">
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
