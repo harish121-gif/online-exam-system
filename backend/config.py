@@ -12,6 +12,7 @@ class Config:
 
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = int(os.getenv("DB_PORT", "3306"))
+
     DB_NAME = os.getenv("DB_NAME", "online_exam_system")
     DB_USER = os.getenv("DB_USER", "root")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
@@ -36,5 +37,6 @@ class Config:
     "http://127.0.0.1:5174",
     "http://localhost:5175",
     "http://127.0.0.1:5175",
-    "https://examsecure-frontend.onrender.com"
+    "https://examsecure-frontend.onrender.com",
+    "https://online-exam-secure.onrender.com"
 ]
