@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
-const API_URL = "https://online-exam-system-gzy3.onrender.com/api";
+const API_URL = "/api";
 
 // =========================================================
 // =========================================================
@@ -392,7 +392,7 @@ async function logout() {
             <div className="brand">
 
               <div className="brand-mark">
-                <span>🎓</span>
+                <span>??</span>
               </div>
 
               <div>
@@ -478,25 +478,25 @@ async function logout() {
             <div className="feature-strip">
 
               <Feature
-                icon="🛡️"
+                icon="???"
                 title="Secure"
                 text="Environment"
               />
 
               <Feature
-                icon="🧠"
+                icon="??"
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="📊"
+                icon="??"
                 title="Real-time"
                 text="Analytics"
               />
 
               <Feature
-                icon="🔒"
+                icon="??"
                 title="Data"
                 text="Privacy"
               />
@@ -514,7 +514,7 @@ async function logout() {
           <div className="login-card">
 
             <div className="login-cap">
-              <span>🎓</span>
+              <span>??</span>
             </div>
 
             <h2>
@@ -534,7 +534,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ✉️
+                  ??
                 </span>
 
                 <input
@@ -558,7 +558,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  🔒
+                  ??
                 </span>
 
                 <input
@@ -622,7 +622,7 @@ async function logout() {
               >
                 {loading
                   ? "Signing in..."
-                  : "Student Login →"}
+                  : "Student Login ?"}
               </button>
 
             </form>
@@ -651,7 +651,7 @@ async function logout() {
             <div className="credential-note">
 
               <div className="note-icon">
-                ℹ️
+                ??
               </div>
 
               <p>
@@ -663,7 +663,7 @@ async function logout() {
 
             <div className="privacy-note">
 
-              <span>🛡️</span>
+              <span>???</span>
 
               Your privacy and security are our priority.
 
@@ -700,7 +700,7 @@ async function logout() {
             <div className="brand">
 
               <div className="brand-mark">
-                <span>🎓</span>
+                <span>??</span>
               </div>
 
               <div>
@@ -784,25 +784,25 @@ async function logout() {
             <div className="feature-strip">
 
               <Feature
-                icon="🛡️"
+                icon="???"
                 title="Secure"
                 text="Registration"
               />
 
               <Feature
-                icon="🎓"
+                icon="??"
                 title="Student"
                 text="Portal"
               />
 
               <Feature
-                icon="🧠"
+                icon="??"
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="🔒"
+                icon="??"
                 title="Data"
                 text="Privacy"
               />
@@ -820,7 +820,7 @@ async function logout() {
           <div className="login-card register-card">
 
             <div className="login-cap">
-              <span>🎓</span>
+              <span>??</span>
             </div>
 
             <h2>
@@ -840,7 +840,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  👤
+                  ??
                 </span>
 
                 <input
@@ -864,7 +864,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  ✉️
+                  ??
                 </span>
 
                 <input
@@ -888,7 +888,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  📱
+                  ??
                 </span>
 
                 <input
@@ -917,7 +917,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  🔒
+                  ??
                 </span>
 
                 <input
@@ -942,7 +942,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  🔒
+                  ??
                 </span>
 
                 <input
@@ -975,7 +975,7 @@ async function logout() {
               >
                 {loading
                   ? "Creating Account..."
-                  : "Create Account →"}
+                  : "Create Account ?"}
               </button>
 
             </form>
@@ -998,12 +998,12 @@ async function logout() {
                 setPage("login");
               }}
             >
-              ← Back to Student Login
+              ? Back to Student Login
             </button>
 
             <div className="privacy-note">
 
-              <span>🛡️</span>
+              <span>???</span>
 
               Your privacy and security are our priority.
 
@@ -1034,7 +1034,7 @@ async function logout() {
           <div className="portal-brand">
 
             <div className="mini-brand-mark">
-              🎓
+              ??
             </div>
 
             <strong>
@@ -1046,7 +1046,7 @@ async function logout() {
           <div className="portal-user">
 
             <div className="user-avatar">
-              👤
+              ??
             </div>
 
             <span>
@@ -1068,7 +1068,7 @@ async function logout() {
           </div>
 
           <h1>
-            Welcome back, {user?.name}! 👋
+            Welcome back, {user?.name}! ??
           </h1>
 
           <p className="dashboard-intro">
@@ -1102,7 +1102,7 @@ async function logout() {
               </div>
 
               <div className="card-cap">
-                🎓
+                ??
               </div>
 
             </div>
@@ -1110,7 +1110,7 @@ async function logout() {
             <div className="dashboard-stats">
 
               <Stat
-                icon="📄"
+                icon="??"
                 value={
                   questions.length > 0
                     ? questions.length
@@ -1120,19 +1120,19 @@ async function logout() {
               />
 
               <Stat
-                icon="⏰"
+                icon="?"
                 value="30"
                 label="Minutes"
               />
 
               <Stat
-                icon="🎯"
+                icon="??"
                 value="Auto"
                 label="Question Set"
               />
 
               <Stat
-                icon="📊"
+                icon="??"
                 value="Mixed"
                 label="Difficulty"
               />
@@ -1148,19 +1148,19 @@ async function logout() {
               <div className="rules-grid">
 
                 <p>
-                  ✓ Stable internet connection
+                  ? Stable internet connection
                 </p>
 
                 <p>
-                  ✓ Do not switch browser tabs
+                  ? Do not switch browser tabs
                 </p>
 
                 <p>
-                  ✓ Answer all questions
+                  ? Answer all questions
                 </p>
 
                 <p>
-                  ✓ Timer starts immediately
+                  ? Timer starts immediately
                 </p>
 
               </div>
@@ -1180,7 +1180,7 @@ async function logout() {
             >
               {loading
                 ? "Starting Examination..."
-                : "Start Examination →"}
+                : "Start Examination ?"}
             </button>
 
           </section>
@@ -1656,7 +1656,7 @@ async function logout() {
         <div className="portal-brand">
 
           <div className="mini-brand-mark">
-            🎓
+            ??
           </div>
 
           <strong>
@@ -1680,7 +1680,7 @@ async function logout() {
         <div className="exam-actions">
 
           <div className="exam-user">
-            👤 {user?.name}
+            ?? {user?.name}
           </div>
 
           <div
@@ -1692,7 +1692,7 @@ async function logout() {
               }`
             }
           >
-            ⏰ {formatTime(timeLeft)}
+            ? {formatTime(timeLeft)}
           </div>
 
           <button
@@ -1758,7 +1758,7 @@ async function logout() {
         {tabSwitches > 0 && (
           <div className="monitoring-warning">
 
-            ⚠️ Tab switches detected:
+            ?? Tab switches detected:
             {" "}
             <strong>
               {tabSwitches}
@@ -1825,7 +1825,7 @@ async function logout() {
                     question.id
                   ] === letter && (
                     <span className="selected-check">
-                      ✓
+                      ?
                     </span>
                   )}
 
@@ -1853,7 +1853,7 @@ async function logout() {
               )
             }
           >
-            ← Previous
+            ? Previous
           </button>
 
           <div className="question-dots">
@@ -1900,7 +1900,7 @@ async function logout() {
                 )
               }
             >
-              Next →
+              Next ?
             </button>
 
           ) : (
@@ -1924,7 +1924,7 @@ async function logout() {
             >
               {submitting
                 ? "Submitting..."
-                : "Submit Examination ✓"}
+                : "Submit Examination ?"}
             </button>
 
           )}
@@ -2006,6 +2006,7 @@ function Stat({
     </div>
   );
 }
+
 
 
 

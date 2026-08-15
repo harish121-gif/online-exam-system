@@ -1,6 +1,6 @@
-import os
+﻿import os
 
-from flask import Flask, jsonify, session
+from flask import Flask, jsonify, session, send_from_directory
 from flask_cors import CORS
 
 from config import Config
@@ -16,7 +16,14 @@ from routes.attempt import attempt_bp
 
 def create_app():
 
-    app = Flask(__name__)
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
+
+    app = Flask(
+        __name__,
+        static_folder=FRONTEND_DIST,
+        static_url_path=""
+    )
 
     # ============================================================
     # FLASK CONFIGURATION
@@ -289,6 +296,23 @@ def create_app():
     # ============================================================
     # RETURN APP
     # ============================================================
+    # ============================================================
+    # REACT FRONTEND
+    # ============================================================
+
+    @app.route("/")
+    def serve_frontend():
+        return send_from_directory(FRONTEND_DIST, "index.html")
+
+    @app.route("/<path:path>")
+    def serve_react(path):
+        file_path = os.path.join(FRONTEND_DIST, path)
+
+        if os.path.isfile(file_path):
+            return send_from_directory(FRONTEND_DIST, path)
+
+        return send_from_directory(FRONTEND_DIST, "index.html")
+
 
     return app
 
@@ -311,3 +335,5 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
+
+
