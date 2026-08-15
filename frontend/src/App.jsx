@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 const API_URL = "/api";
 
@@ -478,25 +478,25 @@ async function logout() {
             <div className="feature-strip">
 
               <Feature
-                icon="✓"
+                icon="SEC"
                 title="Secure"
                 text="Environment"
               />
 
               <Feature
-                icon="●"
+                icon="AI"
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="●"
+                icon="LIVE"
                 title="Real-time"
                 text="Analytics"
               />
 
               <Feature
-                icon="●"
+                icon="SAFE"
                 title="Data"
                 text="Privacy"
               />
@@ -558,7 +558,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  *
+                  SAFE
                 </span>
 
                 <input
@@ -651,7 +651,7 @@ async function logout() {
             <div className="credential-note">
 
               <div className="note-icon">
-                i
+                INFO
               </div>
 
               <p>
@@ -663,7 +663,7 @@ async function logout() {
 
             <div className="privacy-note">
 
-              <span>✓</span>
+              <span>SEC</span>
 
               Your privacy and security are our priority.
 
@@ -672,7 +672,7 @@ async function logout() {
           </div>
 
           <div className="copyright">
-            Copyright 2026 ExamSecure. All rights reserved.
+            (c) 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -784,25 +784,25 @@ async function logout() {
             <div className="feature-strip">
 
               <Feature
-                icon="✓"
+                icon="SEC"
                 title="Secure"
                 text="Registration"
               />
 
               <Feature
-                icon="●"
+                icon="ES"
                 title="Student"
                 text="Portal"
               />
 
               <Feature
-                icon="●"
+                icon="AI"
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="●"
+                icon="SAFE"
                 title="Data"
                 text="Privacy"
               />
@@ -840,7 +840,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  •
+                  U
                 </span>
 
                 <input
@@ -864,7 +864,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  •
+                  @
                 </span>
 
                 <input
@@ -888,7 +888,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  •
+                  TEL
                 </span>
 
                 <input
@@ -917,7 +917,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  •
+                  SAFE
                 </span>
 
                 <input
@@ -942,7 +942,7 @@ async function logout() {
               <div className="input-wrap">
 
                 <span className="input-icon">
-                  •
+                  PASS
                 </span>
 
                 <input
@@ -1003,7 +1003,7 @@ async function logout() {
 
             <div className="privacy-note">
 
-              <span>✓</span>
+              <span>SEC</span>
 
               Your privacy and security are our priority.
 
@@ -1012,7 +1012,7 @@ async function logout() {
           </div>
 
           <div className="copyright">
-            Copyright 2026 ExamSecure. All rights reserved.
+            (c) 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -1068,7 +1068,7 @@ async function logout() {
           </div>
 
           <h1>
-            Welcome back, {user?.name}!
+            Welcome back, {user?.name}! 
           </h1>
 
           <p className="dashboard-intro">
@@ -1110,7 +1110,7 @@ async function logout() {
             <div className="dashboard-stats">
 
               <Stat
-                icon="●"
+                icon="Q"
                 value={
                   questions.length > 0
                     ? questions.length
@@ -1120,19 +1120,19 @@ async function logout() {
               />
 
               <Stat
-                icon="•"
+                icon="TIME"
                 value="30"
                 label="Minutes"
               />
 
               <Stat
-                icon="●"
+                icon="SET"
                 value="Auto"
                 label="Question Set"
               />
 
               <Stat
-                icon="●"
+                icon="LIVE"
                 value="Mixed"
                 label="Difficulty"
               />
@@ -1148,19 +1148,19 @@ async function logout() {
               <div className="rules-grid">
 
                 <p>
-                  Stable internet connection
+                  OK Stable internet connection
                 </p>
 
                 <p>
-                  Do not switch browser tabs
+                  OK Do not switch browser tabs
                 </p>
 
                 <p>
-                  Answer all questions
+                  OK Answer all questions
                 </p>
 
                 <p>
-                  Timer starts immediately
+                  OK Timer starts immediately
                 </p>
 
               </div>
@@ -1224,12 +1224,12 @@ async function logout() {
         <header className="top-header result-header">
 
           <div className="brand">
-            <span className="brand-icon" aria-label="ExamSecure logo"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L20 5V11C20 16.2 16.5 20.1 12 22C7.5 20.1 4 16.2 4 11V5L12 2Z" fill="currentColor"/><path d="M8 12L10.5 14.5L16 9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span className="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l8 4v5c0 4.5-3.4 7.9-8 9-4.6-1.1-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span>
             <strong>ExamSecure</strong>
           </div>
 
           <div className="header-user">
-            <span className="user-icon" aria-label="User"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21C4.8 16.9 7.5 15 12 15C16.5 15 19.2 16.9 20 21" fill="currentColor"/></svg></span>
+            <span className="user-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/></svg></span>
             {user?.name}
           </div>
 
@@ -1270,7 +1270,7 @@ async function logout() {
               <div className="result-hero-left">
 
                 <div className="success-icon">
-                  ?
+                  OK
                 </div>
 
                 <div>
@@ -1355,9 +1355,7 @@ async function logout() {
 
               <div className="score-card">
 
-                <div className="score-card-icon">
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 8H16M8 12H16M8 16H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </div>
+                <div className="score-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
 
                 <span className="score-card-label">
                   TOTAL QUESTIONS
@@ -1375,9 +1373,7 @@ async function logout() {
 
               <div className="score-card">
 
-                <div className="score-card-icon">
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 8H16M8 12H16M8 16H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </div>
+                <div className="score-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
 
                 <span className="score-card-label">
                   PERCENTAGE
@@ -1401,7 +1397,7 @@ async function logout() {
               <div className="result-info-card">
 
                 <div className="info-card-heading">
-                  <span className="info-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1" fill="currentColor"/></svg></span>
+                  <span className="info-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-3.8 3-5.7 7-5.7s6.3 1.9 7 5.7"/></svg></span>
 
                   <div>
                     <h3>Student Details</h3>
@@ -1424,7 +1420,7 @@ async function logout() {
               <div className="result-info-card">
 
                 <div className="info-card-heading">
-                  <span className="info-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1" fill="currentColor"/></svg></span>
+                  <span className="info-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-3.8 3-5.7 7-5.7s6.3 1.9 7 5.7"/></svg></span>
 
                   <div>
                     <h3>Examination Details</h3>
@@ -1656,7 +1652,7 @@ async function logout() {
         <div className="portal-brand">
 
           <div className="mini-brand-mark">
-            !
+            ES
           </div>
 
           <strong>
@@ -1680,7 +1676,7 @@ async function logout() {
         <div className="exam-actions">
 
           <div className="exam-user">
-            {user?.name}
+            U {user?.name}
           </div>
 
           <div
@@ -1692,7 +1688,7 @@ async function logout() {
               }`
             }
           >
-            ? {formatTime(timeLeft)}
+            TIME {formatTime(timeLeft)}
           </div>
 
           <button
@@ -1758,7 +1754,7 @@ async function logout() {
         {tabSwitches > 0 && (
           <div className="monitoring-warning">
 
-            Tab switches detected:
+            WARNING Tab switches detected:
             {" "}
             <strong>
               {tabSwitches}
@@ -1825,7 +1821,7 @@ async function logout() {
                     question.id
                   ] === letter && (
                     <span className="selected-check">
-                      ?
+                      OK
                     </span>
                   )}
 
@@ -1853,7 +1849,7 @@ async function logout() {
               )
             }
           >
-            ? Previous
+            Previous
           </button>
 
           <div className="question-dots">
@@ -1983,6 +1979,7 @@ function Feature({
     </div>
   );
 }
+
 function Stat({
   icon,
   value,
@@ -2006,24 +2003,6 @@ function Stat({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
