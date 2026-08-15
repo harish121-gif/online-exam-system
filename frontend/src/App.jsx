@@ -1,4 +1,10 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
+import {
+  ShieldCheck, Mail, Lock, User, Phone, LogOut,
+  BookOpen, Clock3, Shuffle, BarChart3, CheckCircle2,
+  MonitorCheck, ArrowRight, ArrowLeft, Play, Timer,
+  Wifi, ClipboardCheck, Trophy, AlertTriangle, XCircle
+} from "lucide-react";
 import "./App.css";
 const API_URL = "/api";
 
@@ -2003,6 +2009,8 @@ function Stat({
     </div>
   );
 }
+
+
 
 
 
