@@ -26,12 +26,14 @@
 
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
 body,
 #root {
-  margin: 0;
+  width: 100%;
   min-width: 320px;
   min-height: 100%;
 }
@@ -39,15 +41,20 @@ body,
 body {
   min-height: 100vh;
   background: #f4f7fb;
+  overflow-x: hidden;
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
 button {
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 button:disabled {
@@ -56,7 +63,13 @@ button:disabled {
 }
 
 svg {
+  display: block;
   flex: 0 0 auto;
+}
+
+img {
+  max-width: 100%;
+  display: block;
 }
 
 /* =========================================================
@@ -218,7 +231,9 @@ svg {
   font-size: 11px;
 }
 
-/* LOGIN PANEL */
+/* =========================================================
+   LOGIN PANEL
+   ========================================================= */
 
 .login-panel {
   min-height: 100vh;
@@ -290,6 +305,7 @@ svg {
   display: grid;
   place-items: center;
   color: #64748b;
+  pointer-events: none;
 }
 
 .input-icon svg {
@@ -360,6 +376,8 @@ svg {
   font-weight: 800;
   box-shadow: 0 13px 28px rgba(37, 99, 235, .23);
   transition: transform .2s ease, box-shadow .2s ease;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .login-button:hover,
@@ -734,6 +752,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .exam-title-icon {
@@ -741,6 +760,7 @@ svg {
   height: 40px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 12px;
   color: white;
   background: linear-gradient(135deg, #2563eb, #4f46e5);
@@ -753,6 +773,9 @@ svg {
 .exam-title strong {
   display: block;
   font-family: "Space Grotesk", sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .exam-title span {
@@ -764,6 +787,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 0 0 auto;
 }
 
 .timer {
@@ -776,6 +800,7 @@ svg {
   color: #0f172a;
   background: white;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .timer svg {
@@ -791,13 +816,14 @@ svg {
 .exam-layout {
   width: min(1250px, 94%);
   display: grid;
-  grid-template-columns: 1fr 285px;
+  grid-template-columns: minmax(0, 1fr) 285px;
   gap: 24px;
   margin: auto;
   padding: 35px 0 60px;
 }
 
 .question-card {
+  min-width: 0;
   border: 1px solid #e1e7f0;
   border-radius: 20px;
   background: white;
@@ -808,6 +834,7 @@ svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 15px;
   padding: 22px 25px;
   border-bottom: 1px solid #edf1f6;
 }
@@ -837,6 +864,7 @@ svg {
   font-family: "Space Grotesk", sans-serif;
   font-size: 23px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .options {
@@ -857,6 +885,7 @@ svg {
   background: white;
   text-align: left;
   transition: .2s ease;
+  overflow: hidden;
 }
 
 .option:hover {
@@ -956,6 +985,7 @@ svg {
   color: #475569;
   background: white;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .nav-button.primary {
@@ -968,11 +998,30 @@ svg {
   width: 100%;
   min-height: 50px;
   margin-top: 20px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 0;
   border-radius: 12px;
   color: white;
   background: #0f172a;
   font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.submit-button:hover {
+  background: #1e293b;
+}
+
+.submit-button:focus-visible,
+.nav-button:focus-visible,
+.option:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .25);
+  outline-offset: 2px;
 }
 
 /* =========================================================
@@ -1312,6 +1361,10 @@ svg {
     padding: 10px 15px;
   }
 
+  .exam-title {
+    max-width: 55%;
+  }
+
   .exam-title span {
     display: none;
   }
@@ -1340,5 +1393,9 @@ svg {
 
   .result-title-section h1 {
     font-size: 34px;
+  }
+
+  .submit-button {
+    font-size: 13px;
   }
 }
