@@ -1148,19 +1148,19 @@ async function logout() {
               <div className="rules-grid">
 
                 <p>
-                  ? Stable internet connection
+                  Stable internet connection
                 </p>
 
                 <p>
-                  ? Do not switch browser tabs
+                  Do not switch browser tabs
                 </p>
 
                 <p>
-                  ? Answer all questions
+                  Answer all questions
                 </p>
 
                 <p>
-                  ? Timer starts immediately
+                  Timer starts immediately
                 </p>
 
               </div>
@@ -1180,7 +1180,7 @@ async function logout() {
             >
               {loading
                 ? "Starting Examination..."
-                : "Start Examination ?"}
+                : "Start Examination"}
             </button>
 
           </section>
@@ -1460,7 +1460,7 @@ async function logout() {
                 className="result-back-button"
                 onClick={() => setPage("dashboard")}
               >
-                ? Back to Student Portal
+                Back to Student Portal
               </button>
 
               <p>
@@ -1900,7 +1900,7 @@ async function logout() {
                 )
               }
             >
-              Next ?
+              Next
             </button>
 
           ) : (
@@ -1924,7 +1924,7 @@ async function logout() {
             >
               {submitting
                 ? "Submitting..."
-                : "Submit Examination ?"}
+                : "Submit Examination"}
             </button>
 
           )}
@@ -2006,6 +2006,9 @@ function Stat({
     </div>
   );
 }
+
+
+
 
 
 
