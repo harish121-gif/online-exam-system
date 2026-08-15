@@ -32,8 +32,7 @@ def create_app():
     app.config["SECRET_KEY"] = Config.SECRET_KEY
 
     is_production = (
-        os.getenv("FLASK_ENV", "development").lower()
-        == "production"
+        os.getenv("RENDER") == "true" or os.getenv("FLASK_ENV", "development").lower() == "production"
     )
 
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -92,7 +91,9 @@ def create_app():
             "version": "Phase 1"
         })
 
-    # ============================================================`r`n    # HEALTH CHECK`r`n    # ============================================================
+    # ============================================================
+    # HEALTH CHECK
+    # ============================================================
 
     @app.route("/api/health")
     def health():
@@ -332,6 +333,10 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
+
+
+
+
 
 
 
