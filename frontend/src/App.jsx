@@ -27,6 +27,10 @@ function App() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
+  // Admin Login
+  const [adminUsername, setAdminUsername] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+
   // Registration
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -37,6 +41,14 @@ function App() {
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Admin Dashboard
+  const [adminStats, setAdminStats] = useState({
+    total_students: 0,
+    total_exams: 0,
+    active_exams: 0,
+    total_attempts: 0,
+  });
 
   // Exam
   const [exam, setExam] = useState(null);
@@ -217,6 +229,55 @@ async function checkSession() {
   }
 
   // =========================================================
+  // ADMIN LOGIN
+  // =========================================================
+
+  async function handleAdminLogin(event) {
+    event.preventDefault();
+
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/admin/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          username: adminUsername.trim(),
+          password: adminPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log("ADMIN LOGIN RESPONSE:", data);
+
+      if (response.ok && data.success) {
+        setUser(data.user);
+        setPage("admin-dashboard");
+
+        setAdminPassword("");
+        setMessage("");
+      } else {
+        setMessage(
+          data.message || "Invalid admin username or password."
+        );
+      }
+    } catch (error) {
+      console.error("ADMIN LOGIN ERROR:", error);
+
+      setMessage(
+        "Cannot connect to backend. Please check the server."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // =========================================================
   // REGISTRATION
   // =========================================================
 
@@ -300,6 +361,34 @@ async function checkSession() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  // =========================================================
+  // ADMIN DASHBOARD
+  // =========================================================
+
+  async function loadAdminDashboard() {
+    try {
+      const response = await fetch(`${API_URL}/admin/dashboard`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      console.log("ADMIN DASHBOARD RESPONSE:", data);
+
+      if (response.ok && data.success) {
+        setAdminStats(data.statistics);
+      } else {
+        console.error(
+          "ADMIN DASHBOARD ERROR:",
+          data.message || "Unable to load dashboard"
+        );
+      }
+    } catch (error) {
+      console.error("ADMIN DASHBOARD CONNECTION ERROR:", error);
     }
   }
 
@@ -650,6 +739,25 @@ async function logout() {
               Create an Account
             </button>
 
+            <div className="or-divider">
+              <span></span>
+              <b>OR</b>
+              <span></span>
+            </div>
+
+            <button
+              type="button"
+              className="register-button"
+              onClick={() => {
+                setMessage("");
+                setAdminUsername("");
+                setAdminPassword("");
+                setPage("admin-login");
+              }}
+            >
+              Admin Login
+            </button>
+
             <div className="credential-note">
 
               <div className="note-icon"><Info size={17} /></div>
@@ -676,6 +784,343 @@ async function logout() {
           </div>
 
         </section>
+
+      </div>
+    );
+  }
+
+  // =========================================================
+  // ADMIN LOGIN PAGE
+  // =========================================================
+
+  if (page === "admin-login") {
+    return (
+      <div className="login-page">
+
+        {/* LEFT SIDE */}
+        <section className="login-showcase">
+          <div className="showcase-overlay"></div>
+
+          <div className="showcase-content">
+
+            <div className="brand">
+              <div className="brand-mark">
+                <span>ES</span>
+              </div>
+
+              <div>
+                <strong>
+                  Exam<span>Secure</span>
+                </strong>
+
+                <small>
+                  Intelligent Examination Platform
+                </small>
+              </div>
+            </div>
+
+            <div className="showcase-copy">
+
+              <div className="eyebrow">
+                ADMINISTRATION PORTAL
+              </div>
+
+              <h1>
+                Manage examinations
+                <br />
+                with confidence.
+              </h1>
+
+              <div className="showcase-line"></div>
+
+              <p>
+                Secure administration access for managing
+                students, examinations, questions and
+                examination attempts.
+              </p>
+
+            </div>
+
+          </div>
+        </section>
+
+        {/* RIGHT SIDE */}
+        <section className="login-panel">
+
+          <div className="login-card">
+
+            <div className="login-cap">
+              <ShieldCheck size={26} strokeWidth={2.2} />
+            </div>
+
+            <h2>
+              Admin Login
+            </h2>
+
+            <p className="login-subtitle">
+              Sign in to access the administration portal
+            </p>
+
+            <form onSubmit={handleAdminLogin}>
+
+              <label htmlFor="admin-username">
+                Username
+              </label>
+
+              <div className="input-wrap">
+                <span className="input-icon">
+                  <UserRound size={17} />
+                </span>
+
+                <input
+                  id="admin-username"
+                  type="text"
+                  placeholder="Enter admin username"
+                  value={adminUsername}
+                  onChange={(e) =>
+                    setAdminUsername(e.target.value)
+                  }
+                  required
+                  autoComplete="username"
+                />
+              </div>
+
+              <label htmlFor="admin-password">
+                Password
+              </label>
+
+              <div className="input-wrap">
+                <span className="input-icon">
+                  <LockKeyhole size={17} />
+                </span>
+
+                <input
+                  id="admin-password"
+                  type="password"
+                  placeholder="Enter admin password"
+                  value={adminPassword}
+                  onChange={(e) =>
+                    setAdminPassword(e.target.value)
+                  }
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+
+              {message && (
+                <div className="error-message">
+                  {message}
+                </div>
+              )}
+
+              <button
+                className="login-button"
+                type="submit"
+                disabled={loading}
+              >
+                {loading
+                  ? "Signing in..."
+                  : "Sign In as Admin"}
+              </button>
+
+            </form>
+
+            <div className="or-divider">
+              <span></span>
+              <b>OR</b>
+              <span></span>
+            </div>
+
+            <button
+              type="button"
+              className="register-button"
+              onClick={() => {
+                setMessage("");
+                setPage("login");
+              }}
+            >
+              Back to Student Login
+            </button>
+
+            <div className="credential-note">
+
+              <div className="note-icon">
+                <Info size={17} />
+              </div>
+
+              <p>
+                Use your authorized administrator credentials
+                to access the management portal.
+              </p>
+
+            </div>
+
+            <div className="privacy-note">
+              <ShieldCheck size={15} />
+              Your privacy and security are our priority.
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+    );
+  }
+
+  // =========================================================
+  // ADMIN DASHBOARD PAGE
+  // =========================================================
+
+  if (page === "admin-dashboard") {
+
+    useEffect(() => {
+      loadAdminDashboard();
+    }, []);
+
+    return (
+      <div className="dashboard-page">
+
+        <div className="dashboard-header">
+
+          <div>
+            <div className="portal-label">
+              ADMIN PORTAL
+            </div>
+
+            <h1>
+              Welcome, {user?.name || "Administrator"}!
+            </h1>
+
+            <p className="dashboard-intro">
+              Manage students, examinations and examination attempts.
+            </p>
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={logout}
+          >
+            <LogOut size={17} />
+            Logout
+          </button>
+
+        </div>
+
+        <div className="admin-stat-grid">
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-icon">
+              <GraduationCap size={24} />
+            </div>
+
+            <div>
+              <span>Total Students</span>
+              <strong>{adminStats.total_students}</strong>
+            </div>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-icon">
+              <ClipboardCheck size={24} />
+            </div>
+
+            <div>
+              <span>Total Exams</span>
+              <strong>{adminStats.total_exams}</strong>
+            </div>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-icon">
+              <MonitorCheck size={24} />
+            </div>
+
+            <div>
+              <span>Active Exams</span>
+              <strong>{adminStats.active_exams}</strong>
+            </div>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-icon">
+              <BarChart3 size={24} />
+            </div>
+
+            <div>
+              <span>Total Attempts</span>
+              <strong>{adminStats.total_attempts}</strong>
+            </div>
+          </div>
+
+        </div>
+
+        <div className="admin-section">
+
+          <h2>Administration</h2>
+
+          <div className="admin-action-grid">
+
+            <div className="admin-action-card">
+              <GraduationCap size={28} />
+
+              <h3>Student Management</h3>
+
+              <p>
+                View, add, edit and manage registered students.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setMessage("Student management coming next.")}
+              >
+                Manage Students
+              </button>
+            </div>
+
+            <div className="admin-action-card">
+              <ClipboardCheck size={28} />
+
+              <h3>Exam Management</h3>
+
+              <p>
+                Create, update and manage examinations.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setMessage("Exam management coming next.")}
+              >
+                Manage Exams
+              </button>
+            </div>
+
+            <div className="admin-action-card">
+              <BarChart3 size={28} />
+
+              <h3>Attempt Reports</h3>
+
+              <p>
+                Review student attempts, scores and examination results.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setMessage("Attempt reports coming next.")}
+              >
+                View Reports
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+        {message && (
+          <div className="admin-message">
+            {message}
+          </div>
+        )}
 
       </div>
     );
