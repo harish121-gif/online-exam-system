@@ -1943,227 +1943,169 @@ async function logout() {
   if (page === "admin-dashboard") {
 
     return (
-      <div className="admin-dashboard-page">
+      <div className="dashboard-page">
 
-        {/* =====================================================
-            ADMIN HEADER
-            ===================================================== */}
+        <div className="dashboard-header">
 
-        <header className="admin-dashboard-header">
-
-          <div className="admin-brand">
-            <div className="admin-brand-mark">
-              <ShieldCheck size={23} />
+          <div>
+            <div className="portal-label">
+              ADMIN PORTAL
             </div>
 
-            <div className="admin-brand-text">
-              <strong>
-                Exam<span>Secure</span>
-              </strong>
+            <h1>
+              Welcome, {user?.name || "Administrator"}!
+            </h1>
 
-              <small>
-                ADMIN PORTAL
-              </small>
-            </div>
+            <p className="dashboard-intro">
+              Manage students, examinations and examination attempts.
+            </p>
           </div>
 
-          <div className="admin-welcome">
+          <button
+            className="logout-button"
+            onClick={logout}
+          >
+            <LogOut size={17} />
+            Logout
+          </button>
 
-            <div className="admin-welcome-text">
-              <h1>
-                Welcome, System Administrator!
-              </h1>
+        </div>
 
-              <p>
-                Manage your examination platform
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="admin-header-logout"
-              onClick={logout}
-            >
-              <LogOut size={17} />
-              Logout
-            </button>
-
-          </div>
-
-        </header>
-
-
-        {/* =====================================================
-            STATISTICS
-            ===================================================== */}
-
-        <section className="admin-stat-grid">
+        <div className="admin-stat-grid">
 
           <div className="admin-stat-card">
             <div className="admin-stat-icon">
-              <GraduationCap size={22} />
+              <GraduationCap size={24} />
             </div>
 
-            <div className="admin-stat-content">
-              <span>Students</span>
+            <div>
+              <span>Total Students</span>
               <strong>{adminStats.total_students}</strong>
             </div>
           </div>
 
-
           <div className="admin-stat-card">
             <div className="admin-stat-icon">
-              <ClipboardCheck size={22} />
+              <ClipboardCheck size={24} />
             </div>
 
-            <div className="admin-stat-content">
-              <span>Exams</span>
+            <div>
+              <span>Total Exams</span>
               <strong>{adminStats.total_exams}</strong>
             </div>
           </div>
 
-
           <div className="admin-stat-card">
             <div className="admin-stat-icon">
-              <MonitorCheck size={22} />
+              <MonitorCheck size={24} />
             </div>
 
-            <div className="admin-stat-content">
+            <div>
               <span>Active Exams</span>
               <strong>{adminStats.active_exams}</strong>
             </div>
           </div>
 
-
           <div className="admin-stat-card">
             <div className="admin-stat-icon">
-              <BarChart3 size={22} />
+              <BarChart3 size={24} />
             </div>
 
-            <div className="admin-stat-content">
-              <span>Attempts</span>
+            <div>
+              <span>Total Attempts</span>
               <strong>{adminStats.total_attempts}</strong>
             </div>
           </div>
 
-        </section>
+        </div>
 
+        <div className="admin-section">
 
-        {/* =====================================================
-            ADMINISTRATION
-            ===================================================== */}
+          <h2>Administration</h2>
 
-        <section className="admin-management-section">
+          <div className="admin-action-grid">
 
-          <div className="admin-section-heading">
-            <span>ADMINISTRATION</span>
-          </div>
+            <div className="admin-action-card">
+              <GraduationCap size={28} />
 
+              <h3>Student Management</h3>
 
-          <div className="admin-management-grid">
+              <p>
+                View, add, edit and manage registered students.
+              </p>
 
-            {/* STUDENT MANAGEMENT */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMessage("");
+                  setPage("admin-students");
+                  loadAdminStudents();
+                }}
+              >
+                Manage Students
+              </button>
+            </div>
 
-            <button
-              type="button"
-              className="admin-management-card"
-              onClick={() => setPage("admin-students")}
-            >
+            <div className="admin-action-card">
+              <ClipboardCheck size={28} />
 
-              <div className="admin-management-icon">
-                <GraduationCap size={25} />
-              </div>
+              <h3>Exam Management</h3>
 
-              <div className="admin-management-content">
+              <p>
+                Create, update and manage examinations.
+              </p>
 
-                <h2>
-                  Student Management
-                </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setMessage("");
+                  setPage("admin-exams");
+                  loadAdminExams();
+                }}
+              >
+                Manage Exams
+              </button>
+            </div>
 
-                <p>
-                  View, add, edit and manage registered students.
-                </p>
+            <div className="admin-action-card">
+              <BarChart3 size={28} />
 
-                <span className="admin-management-link">
-                  Manage students
-                  <ArrowRight size={16} />
-                </span>
+              <h3>Attempt Reports</h3>
 
-              </div>
+              <p>
+                Review student attempts, scores and examination results.
+              </p>
 
-            </button>
-
-
-            {/* EXAM MANAGEMENT */}
-
-            <button
-              type="button"
-              className="admin-management-card"
-              onClick={() => setPage("admin-exams")}
-            >
-
-              <div className="admin-management-icon">
-                <ClipboardCheck size={25} />
-              </div>
-
-              <div className="admin-management-content">
-
-                <h2>
-                  Exam Management
-                </h2>
-
-                <p>
-                  Create, update and manage examinations.
-                </p>
-
-                <span className="admin-management-link">
-                  Manage exams
-                  <ArrowRight size={16} />
-                </span>
-
-              </div>
-
-            </button>
-
-
-            {/* ATTEMPT REPORTS */}
-
-            <button
-              type="button"
-              className="admin-management-card"
-              onClick={() => setPage("admin-reports")}
-            >
-
-              <div className="admin-management-icon">
-                <BarChart3 size={25} />
-              </div>
-
-              <div className="admin-management-content">
-
-                <h2>
-                  Attempt Reports
-                </h2>
-
-                <p>
-                  Review student attempts, scores and examination results.
-                </p>
-
-                <span className="admin-management-link">
-                  View results
-                  <ArrowRight size={16} />
-                </span>
-
-              </div>
-
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMessage("");
+                  setSelectedAttempt(null);
+                  setPage("admin-reports");
+                  loadAdminAttempts();
+                }}
+              >
+                View Reports
+              </button>
+            </div>
 
           </div>
 
-        </section>
+        </div>
+
+        {message && (
+          <div className="admin-message">
+            {message}
+          </div>
+        )}
 
       </div>
     );
   }
+
+  // =========================================================
+  // REGISTRATION PAGE
+  // =========================================================
 
   if (page === "register") {
     return (
