@@ -73,6 +73,15 @@ function App() {
     checkSession();
   }, []);
 
+  // Load admin dashboard statistics
+  useEffect(() => {
+    if (page !== "admin-dashboard") {
+      return;
+    }
+
+    loadAdminDashboard();
+  }, [page]);
+
   // =========================================================
   // REMEMBER EMAIL
   // =========================================================
@@ -973,10 +982,6 @@ async function logout() {
   // =========================================================
 
   if (page === "admin-dashboard") {
-
-    useEffect(() => {
-      loadAdminDashboard();
-    }, []);
 
     return (
       <div className="dashboard-page">
