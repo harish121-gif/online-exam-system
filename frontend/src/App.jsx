@@ -50,6 +50,30 @@ function App() {
     total_attempts: 0,
   });
 
+  // Admin Management
+  const [adminStudents, setAdminStudents] = useState([]);
+  const [adminExams, setAdminExams] = useState([]);
+  const [adminAttempts, setAdminAttempts] = useState([]);
+  const [selectedAttempt, setSelectedAttempt] = useState(null);
+  const [adminFormLoading, setAdminFormLoading] = useState(false);
+
+  const [studentForm, setStudentForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
+
+  const [examForm, setExamForm] = useState({
+    title: "",
+    total_questions: 20,
+    duration_minutes: 30,
+    is_active: 1,
+  });
+
+  const [editingStudentId, setEditingStudentId] = useState(null);
+  const [editingExamId, setEditingExamId] = useState(null);
+
   // Exam
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -398,6 +422,279 @@ async function checkSession() {
       }
     } catch (error) {
       console.error("ADMIN DASHBOARD CONNECTION ERROR:", error);
+    }
+  }
+
+  // =========================================================
+  // ADMIN MANAGEMENT
+  // =========================================================
+
+  async function loadAdminStudents() {
+    try {
+      const response = await fetch(`${API_URL}/admin/students`, {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAdminStudents(Array.isArray(data.students) ? data.students : []);
+      } else {
+        setMessage(data.message || "Unable to load students.");
+      }
+    } catch (error) {
+      console.error("STUDENT MANAGEMENT ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
+  async function saveStudent(event) {
+    event.preventDefault();
+    setAdminFormLoading(true);
+    setMessage("");
+
+    try {
+      const isEditing = Boolean(editingStudentId);
+
+      const response = await fetch(
+        isEditing
+          ? `${API_URL}/admin/students/${editingStudentId}`
+          : `${API_URL}/admin/students`,
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(studentForm),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setStudentForm({
+          name: "",
+          email: "",
+          phone: "",
+          password: "",
+        });
+
+        setEditingStudentId(null);
+        await loadAdminStudents();
+        await loadAdminDashboard();
+
+        setMessage(
+          isEditing
+            ? "Student updated successfully."
+            : "Student added successfully."
+        );
+      } else {
+        setMessage(data.message || "Unable to save student.");
+      }
+    } catch (error) {
+      console.error("SAVE STUDENT ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    } finally {
+      setAdminFormLoading(false);
+    }
+  }
+
+  function editStudent(student) {
+    setEditingStudentId(student.id);
+
+    setStudentForm({
+      name: student.name || "",
+      email: student.email || "",
+      phone: student.phone || "",
+      password: "",
+    });
+
+    setMessage("");
+  }
+
+  async function deleteStudent(studentId) {
+    if (!window.confirm("Are you sure you want to delete this student?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/admin/students/${studentId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        await loadAdminStudents();
+        await loadAdminDashboard();
+        setMessage("Student deleted successfully.");
+      } else {
+        setMessage(data.message || "Unable to delete student.");
+      }
+    } catch (error) {
+      console.error("DELETE STUDENT ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
+  async function loadAdminExams() {
+    try {
+      const response = await fetch(`${API_URL}/exam/`, {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAdminExams(Array.isArray(data.exams) ? data.exams : []);
+      } else {
+        setMessage(data.message || "Unable to load examinations.");
+      }
+    } catch (error) {
+      console.error("EXAM MANAGEMENT ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
+  async function saveExam(event) {
+    event.preventDefault();
+    setAdminFormLoading(true);
+    setMessage("");
+
+    try {
+      const isEditing = Boolean(editingExamId);
+
+      const response = await fetch(
+        isEditing
+          ? `${API_URL}/exam/${editingExamId}`
+          : `${API_URL}/exam/`,
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(examForm),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setExamForm({
+          title: "",
+          total_questions: 20,
+          duration_minutes: 30,
+          is_active: 1,
+        });
+
+        setEditingExamId(null);
+        await loadAdminExams();
+        await loadAdminDashboard();
+
+        setMessage(
+          isEditing
+            ? "Examination updated successfully."
+            : "Examination created successfully."
+        );
+      } else {
+        setMessage(data.message || "Unable to save examination.");
+      }
+    } catch (error) {
+      console.error("SAVE EXAM ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    } finally {
+      setAdminFormLoading(false);
+    }
+  }
+
+  function editExam(item) {
+    setEditingExamId(item.id);
+
+    setExamForm({
+      title: item.title || "",
+      total_questions: item.total_questions || 20,
+      duration_minutes: item.duration_minutes || 30,
+      is_active: Number(item.is_active) ? 1 : 0,
+    });
+
+    setMessage("");
+  }
+
+  async function deleteExam(examId) {
+    if (!window.confirm("Are you sure you want to delete this examination?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/exam/${examId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        await loadAdminExams();
+        await loadAdminDashboard();
+        setMessage("Examination deleted successfully.");
+      } else {
+        setMessage(data.message || "Unable to delete examination.");
+      }
+    } catch (error) {
+      console.error("DELETE EXAM ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
+  async function loadAdminAttempts() {
+    try {
+      const response = await fetch(`${API_URL}/admin/attempts`, {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAdminAttempts(
+          Array.isArray(data.attempts) ? data.attempts : []
+        );
+      } else {
+        setMessage(data.message || "Unable to load reports.");
+      }
+    } catch (error) {
+      console.error("REPORTS ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
+  async function viewAttempt(attemptId) {
+    try {
+      const response = await fetch(
+        `${API_URL}/admin/attempts/${attemptId}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSelectedAttempt(data.attempt);
+      } else {
+        setMessage(data.message || "Unable to load attempt.");
+      }
+    } catch (error) {
+      console.error("ATTEMPT DETAILS ERROR:", error);
+      setMessage("Unable to connect to backend.");
     }
   }
 
@@ -978,6 +1275,668 @@ async function logout() {
   }
 
   // =========================================================
+  // ADMIN STUDENT MANAGEMENT
+  // =========================================================
+
+  if (page === "admin-students") {
+    return (
+      <div className="dashboard-page admin-management-page">
+
+        <div className="dashboard-header">
+          <div>
+            <div className="portal-label">ADMIN PORTAL</div>
+            <h1>Student Management</h1>
+            <p className="dashboard-intro">
+              View, add, edit and manage registered students.
+            </p>
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={() => setPage("admin-dashboard")}
+          >
+            <ArrowLeft size={17} />
+            Back to Dashboard
+          </button>
+        </div>
+
+        <div className="admin-management-card">
+
+          <div className="admin-management-title">
+            <div>
+              <h2>
+                {editingStudentId
+                  ? "Edit Student"
+                  : "Add New Student"}
+              </h2>
+              <p>
+                Manage student account information.
+              </p>
+            </div>
+          </div>
+
+          <form
+            className="admin-management-form"
+            onSubmit={saveStudent}
+          >
+            <input
+              type="text"
+              placeholder="Student name"
+              value={studentForm.name}
+              onChange={(e) =>
+                setStudentForm({
+                  ...studentForm,
+                  name: e.target.value,
+                })
+              }
+              required
+            />
+
+            <input
+              type="email"
+              placeholder="Student email"
+              value={studentForm.email}
+              onChange={(e) =>
+                setStudentForm({
+                  ...studentForm,
+                  email: e.target.value,
+                })
+              }
+              required
+            />
+
+            <input
+              type="tel"
+              placeholder="Phone number"
+              value={studentForm.phone}
+              onChange={(e) =>
+                setStudentForm({
+                  ...studentForm,
+                  phone: e.target.value,
+                })
+              }
+            />
+
+            {!editingStudentId && (
+              <input
+                type="password"
+                placeholder="Temporary password"
+                value={studentForm.password}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    password: e.target.value,
+                  })
+                }
+                required
+              />
+            )}
+
+            <button
+              className="admin-primary-button"
+              type="submit"
+              disabled={adminFormLoading}
+            >
+              {adminFormLoading
+                ? "Saving..."
+                : editingStudentId
+                ? "Update Student"
+                : "Add Student"}
+            </button>
+
+            {editingStudentId && (
+              <button
+                className="admin-secondary-button"
+                type="button"
+                onClick={() => {
+                  setEditingStudentId(null);
+                  setStudentForm({
+                    name: "",
+                    email: "",
+                    phone: "",
+                    password: "",
+                  });
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </form>
+
+        </div>
+
+        <div className="admin-table-card">
+
+          <div className="admin-table-heading">
+            <h2>Registered Students</h2>
+            <span>{adminStudents.length} students</span>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Registered</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {adminStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="admin-empty">
+                      No students registered yet.
+                    </td>
+                  </tr>
+                ) : (
+                  adminStudents.map((student) => (
+                    <tr key={student.id}>
+                      <td>#{student.id}</td>
+                      <td>{student.name}</td>
+                      <td>{student.email}</td>
+                      <td>{student.phone || "?"}</td>
+                      <td>
+                        {student.created_at
+                          ? new Date(
+                              student.created_at
+                            ).toLocaleDateString()
+                          : "?"}
+                      </td>
+                      <td>
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              editStudent(student)
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() =>
+                              deleteStudent(student.id)
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {message && (
+          <div className="admin-message">
+            {message}
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  // =========================================================
+  // ADMIN EXAM MANAGEMENT
+  // =========================================================
+
+  if (page === "admin-exams") {
+    return (
+      <div className="dashboard-page admin-management-page">
+
+        <div className="dashboard-header">
+          <div>
+            <div className="portal-label">ADMIN PORTAL</div>
+            <h1>Exam Management</h1>
+            <p className="dashboard-intro">
+              Create, update and manage examinations.
+            </p>
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={() => setPage("admin-dashboard")}
+          >
+            <ArrowLeft size={17} />
+            Back to Dashboard
+          </button>
+        </div>
+
+        <div className="admin-management-card">
+
+          <div className="admin-management-title">
+            <div>
+              <h2>
+                {editingExamId
+                  ? "Edit Examination"
+                  : "Create Examination"}
+              </h2>
+              <p>
+                Configure examination title, questions,
+                duration and availability.
+              </p>
+            </div>
+          </div>
+
+          <form
+            className="admin-management-form exam-form"
+            onSubmit={saveExam}
+          >
+            <input
+              type="text"
+              placeholder="Examination title"
+              value={examForm.title}
+              onChange={(e) =>
+                setExamForm({
+                  ...examForm,
+                  title: e.target.value,
+                })
+              }
+              required
+            />
+
+            <input
+              type="number"
+              min="1"
+              placeholder="Total questions"
+              value={examForm.total_questions}
+              onChange={(e) =>
+                setExamForm({
+                  ...examForm,
+                  total_questions: e.target.value,
+                })
+              }
+              required
+            />
+
+            <input
+              type="number"
+              min="1"
+              placeholder="Duration in minutes"
+              value={examForm.duration_minutes}
+              onChange={(e) =>
+                setExamForm({
+                  ...examForm,
+                  duration_minutes: e.target.value,
+                })
+              }
+              required
+            />
+
+            <select
+              value={examForm.is_active}
+              onChange={(e) =>
+                setExamForm({
+                  ...examForm,
+                  is_active: Number(e.target.value),
+                })
+              }
+            >
+              <option value={1}>Active</option>
+              <option value={0}>Inactive</option>
+            </select>
+
+            <button
+              className="admin-primary-button"
+              type="submit"
+              disabled={adminFormLoading}
+            >
+              {adminFormLoading
+                ? "Saving..."
+                : editingExamId
+                ? "Update Examination"
+                : "Create Examination"}
+            </button>
+
+            {editingExamId && (
+              <button
+                className="admin-secondary-button"
+                type="button"
+                onClick={() => {
+                  setEditingExamId(null);
+                  setExamForm({
+                    title: "",
+                    total_questions: 20,
+                    duration_minutes: 30,
+                    is_active: 1,
+                  });
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </form>
+
+        </div>
+
+        <div className="admin-table-card">
+
+          <div className="admin-table-heading">
+            <h2>Examinations</h2>
+            <span>{adminExams.length} exams</span>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Examination</th>
+                  <th>Questions</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {adminExams.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="admin-empty">
+                      No examinations created yet.
+                    </td>
+                  </tr>
+                ) : (
+                  adminExams.map((item) => (
+                    <tr key={item.id}>
+                      <td>#{item.id}</td>
+                      <td>
+                        <strong>{item.title}</strong>
+                      </td>
+                      <td>{item.total_questions}</td>
+                      <td>{item.duration_minutes} min</td>
+                      <td>
+                        <span
+                          className={
+                            Number(item.is_active)
+                              ? "status-badge active"
+                              : "status-badge inactive"
+                          }
+                        >
+                          {Number(item.is_active)
+                            ? "Active"
+                            : "Inactive"}
+                        </span>
+                      </td>
+                      <td>
+                        {item.created_at
+                          ? new Date(
+                              item.created_at
+                            ).toLocaleDateString()
+                          : "?"}
+                      </td>
+                      <td>
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              editExam(item)
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() =>
+                              deleteExam(item.id)
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        {message && (
+          <div className="admin-message">
+            {message}
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  // =========================================================
+  // ADMIN ATTEMPT REPORTS
+  // =========================================================
+
+  if (page === "admin-reports") {
+    return (
+      <div className="dashboard-page admin-management-page">
+
+        <div className="dashboard-header">
+          <div>
+            <div className="portal-label">ADMIN PORTAL</div>
+            <h1>Attempt Reports</h1>
+            <p className="dashboard-intro">
+              Review student attempts, scores and examination results.
+            </p>
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={() => setPage("admin-dashboard")}
+          >
+            <ArrowLeft size={17} />
+            Back to Dashboard
+          </button>
+        </div>
+
+        <div className="admin-table-card">
+
+          <div className="admin-table-heading">
+            <h2>Examination Attempts</h2>
+            <span>{adminAttempts.length} attempts</span>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Attempt</th>
+                  <th>Student</th>
+                  <th>Examination</th>
+                  <th>Set</th>
+                  <th>Score</th>
+                  <th>Percentage</th>
+                  <th>Status</th>
+                  <th>Started</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {adminAttempts.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="admin-empty">
+                      No examination attempts found.
+                    </td>
+                  </tr>
+                ) : (
+                  adminAttempts.map((attempt) => (
+                    <tr key={attempt.attempt_id}>
+                      <td>#{attempt.attempt_id}</td>
+                      <td>
+                        <strong>{attempt.student_name}</strong>
+                        <small className="table-subtext">
+                          {attempt.student_email}
+                        </small>
+                      </td>
+                      <td>{attempt.exam_title}</td>
+                      <td>
+                        <span className="set-badge">
+                          {attempt.question_set || "?"}
+                        </span>
+                      </td>
+                      <td>
+                        {attempt.score ?? 0}/
+                        {attempt.total_questions ?? 0}
+                      </td>
+                      <td>
+                        {Number(
+                          attempt.percentage || 0
+                        ).toFixed(2)}%
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            attempt.status === "submitted"
+                              ? "status-badge active"
+                              : "status-badge inactive"
+                          }
+                        >
+                          {attempt.status || "Unknown"}
+                        </span>
+                      </td>
+                      <td>
+                        {attempt.start_time
+                          ? new Date(
+                              attempt.start_time
+                            ).toLocaleString()
+                          : "?"}
+                      </td>
+                      <td>
+                        <button
+                          className="report-view-button"
+                          type="button"
+                          onClick={() =>
+                            viewAttempt(
+                              attempt.attempt_id
+                            )
+                          }
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        {selectedAttempt && (
+          <div className="attempt-detail-card">
+
+            <div className="admin-table-heading">
+              <div>
+                <h2>Attempt Details</h2>
+                <p>
+                  Attempt #{selectedAttempt.attempt_id}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="admin-secondary-button"
+                onClick={() =>
+                  setSelectedAttempt(null)
+                }
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="attempt-detail-grid">
+
+              <div>
+                <span>Student</span>
+                <strong>
+                  {selectedAttempt.student_name}
+                </strong>
+              </div>
+
+              <div>
+                <span>Email</span>
+                <strong>
+                  {selectedAttempt.student_email}
+                </strong>
+              </div>
+
+              <div>
+                <span>Examination</span>
+                <strong>
+                  {selectedAttempt.exam_title}
+                </strong>
+              </div>
+
+              <div>
+                <span>Question Set</span>
+                <strong>
+                  {selectedAttempt.question_set}
+                </strong>
+              </div>
+
+              <div>
+                <span>Score</span>
+                <strong>
+                  {selectedAttempt.score ?? 0}/
+                  {selectedAttempt.total_questions ?? 0}
+                </strong>
+              </div>
+
+              <div>
+                <span>Percentage</span>
+                <strong>
+                  {Number(
+                    selectedAttempt.percentage || 0
+                  ).toFixed(2)}%
+                </strong>
+              </div>
+
+              <div>
+                <span>Status</span>
+                <strong>
+                  {selectedAttempt.status}
+                </strong>
+              </div>
+
+              <div>
+                <span>Duration</span>
+                <strong>
+                  {selectedAttempt.duration_minutes || 0} minutes
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {message && (
+          <div className="admin-message">
+            {message}
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  // =========================================================
   // ADMIN DASHBOARD PAGE
   // =========================================================
 
@@ -1077,7 +2036,11 @@ async function logout() {
 
               <button
                 type="button"
-                onClick={() => setMessage("Student management coming next.")}
+                onClick={() => {
+                  setMessage("");
+                  setPage("admin-students");
+                  loadAdminStudents();
+                }}
               >
                 Manage Students
               </button>
@@ -1094,7 +2057,11 @@ async function logout() {
 
               <button
                 type="button"
-                onClick={() => setMessage("Exam management coming next.")}
+                onClick={() => {
+                  setMessage("");
+                  setPage("admin-exams");
+                  loadAdminExams();
+                }}
               >
                 Manage Exams
               </button>
@@ -1111,7 +2078,12 @@ async function logout() {
 
               <button
                 type="button"
-                onClick={() => setMessage("Attempt reports coming next.")}
+                onClick={() => {
+                  setMessage("");
+                  setSelectedAttempt(null);
+                  setPage("admin-reports");
+                  loadAdminAttempts();
+                }}
               >
                 View Reports
               </button>
