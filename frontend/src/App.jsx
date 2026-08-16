@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
+import {
+  ShieldCheck, Mail, LockKeyhole, UserRound, Phone,
+  Info, CheckCircle2, ClipboardCheck, Clock3, Shuffle,
+  BarChart3, LogOut, ArrowLeft, ArrowRight, Play,
+  Timer, AlertTriangle, CircleCheck, MonitorCheck,
+  FileCheck2, GraduationCap, Wifi, EyeOff
+} from "lucide-react";
 import "./App.css";
-
 const API_URL = "/api";
+const EXAM_ID = import.meta.env.VITE_EXAM_ID || "1";
+
+// =========================================================
+// =========================================================
+
+
+// =========================================================
+// MAIN APP
+// =========================================================
 
 function App() {
   const [user, setUser] = useState(null);
@@ -118,28 +133,28 @@ function App() {
   // SESSION CHECK
   // =========================================================
 
-  async function checkSession() {
-    try {
-      const response = await fetch(`${API_URL}/me`, {
-        method: "GET",
-        credentials: "include",
-      });
+async function checkSession() {
+  try {
+    const response = await fetch(`${API_URL}/me`, {
+      method: "GET",
+      credentials: "include",
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      console.log("SESSION RESPONSE:", data);
+    console.log("SESSION RESPONSE:", data);
 
-      if (response.ok && data.success) {
-        setUser(data.user);
+    if (response.ok && data.success) {
+      setUser(data.user);
 
-        if (data.user.role === "student") {
-          setPage("dashboard");
-        }
+      if (data.user.role === "student") {
+        setPage("dashboard");
       }
-    } catch (error) {
-      console.error("SESSION CHECK ERROR:", error);
     }
+  } catch (error) {
+    console.error("SESSION CHECK ERROR:", error);
   }
+}
 
   // =========================================================
   // LOGIN
@@ -228,14 +243,15 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${API_URL}/student/register`,
-        {
+      const response = await fetch(`${API_URL}/student/register`, {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           credentials: "include",
+
           body: JSON.stringify({
             name: registerName.trim(),
             email: registerEmail.trim(),
@@ -291,32 +307,25 @@ function App() {
   // LOGOUT
   // =========================================================
 
-  async function logout() {
-    try {
-      await fetch(`${API_URL}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (error) {
-      console.error("LOGOUT ERROR:", error);
-    }
-
-    setUser(null);
-    setPage("login");
-
-    setExam(null);
-    setQuestions([]);
-    setQuestionSet("");
-    setAttemptId(null);
-    setResult(null);
-    setAnswers({});
-    setCurrentQuestion(0);
-    setTabSwitches(0);
-    setTimeLeft(30 * 60);
-    setMessage("");
-    setExamMessage("");
+async function logout() {
+  try {
+    await fetch(`${API_URL}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error("LOGOUT ERROR:", error);
   }
 
+  setUser(null);
+  setPage("login");
+
+  setExam(null);
+  setQuestions([]);
+  setQuestionSet("");
+  setAttemptId(null);
+  setMessage("");
+}
   // =========================================================
   // START EXAM
   // =========================================================
@@ -326,13 +335,7 @@ function App() {
     setMessage("");
 
     try {
-      const response = await fetch(
-        `${API_URL}/exam/2/start`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, { method: "POST", credentials: "include" });
 
       const data = await response.json();
 
@@ -343,7 +346,6 @@ function App() {
 
       if (response.ok && data.success) {
         setExam(data.exam);
-
         setQuestions(
           Array.isArray(data.questions)
             ? data.questions
@@ -357,14 +359,6 @@ function App() {
         setAttemptId(
           data.attempt_id || null
         );
-
-        setAnswers({});
-        setCurrentQuestion(0);
-        setTabSwitches(0);
-        setTimeLeft(
-          (data.exam?.duration_minutes || 30) * 60
-        );
-        setExamMessage("");
 
         setPage("exam");
       } else {
@@ -388,136 +382,14 @@ function App() {
   }
 
   // =========================================================
-  // SELECT ANSWER
-  // =========================================================
-
-  function selectAnswer(option) {
-    const question =
-      questions[currentQuestion];
-
-    if (!question) {
-      return;
-    }
-
-    setAnswers((previous) => ({
-      ...previous,
-      [question.id]: option,
-    }));
-  }
-
-  // =========================================================
-  // FORMAT TIMER
-  // =========================================================
-
-  function formatTime(seconds) {
-    const minutes =
-      Math.floor(seconds / 60);
-
-    const secs =
-      seconds % 60;
-
-    return `${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(secs).padStart(
-      2,
-      "0"
-    )}`;
-  }
-
-  // =========================================================
-  // SUBMIT EXAM
-  // =========================================================
-
-  async function handleSubmitExam(autoSubmit = false) {
-    if (submitting) {
-      return;
-    }
-
-    if (!exam?.id) {
-      setExamMessage(
-        "Exam information is missing."
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    setExamMessage("");
-
-    const payload = {
-      attempt_id: attemptId,
-      answers: answers,
-      tab_switches: tabSwitches,
-      time_remaining: timeLeft,
-    };
-
-    console.log(
-      "SUBMIT EXAM PAYLOAD:",
-      payload
-    );
-
-    try {
-      const response = await fetch(
-        `${API_URL}/exam/${exam.id}/submit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await response.json();
-
-      console.log(
-        "SUBMIT EXAM RESPONSE:",
-        data
-      );
-
-      if (response.ok && data.success) {
-        alert(
-          autoSubmit
-            ? "Time is over. Your examination has been submitted."
-            : "Examination submitted successfully."
-        );
-
-        setResult(
-          data.result || data
-        );
-
-        setPage("result");
-        setSubmitting(false);
-      } else {
-        setExamMessage(
-          data.message ||
-            "Unable to submit examination."
-        );
-
-        setSubmitting(false);
-      }
-    } catch (error) {
-      console.error(
-        "SUBMIT EXAM ERROR:",
-        error
-      );
-
-      setExamMessage(
-        "Cannot connect to backend while submitting."
-      );
-
-      setSubmitting(false);
-    }
-  }
-
-  // =========================================================
   // LOGIN PAGE
   // =========================================================
 
   if (page === "login") {
     return (
       <div className="login-page">
+
+        {/* LEFT SIDE */}
 
         <section className="login-showcase">
 
@@ -528,7 +400,7 @@ function App() {
             <div className="brand">
 
               <div className="brand-mark">
-                <span>CAP</span>
+                <span>ES</span>
               </div>
 
               <div>
@@ -578,7 +450,9 @@ function App() {
                     </div>
 
                     <div className="screen-row wide"></div>
+
                     <div className="screen-row"></div>
+
                     <div className="screen-row"></div>
 
                     <div className="screen-button">
@@ -592,13 +466,17 @@ function App() {
                 </div>
 
                 <div className="scene-book book-one"></div>
+
                 <div className="scene-book book-two"></div>
 
                 <div className="scene-plant">
+
                   <span></span>
                   <span></span>
                   <span></span>
+
                   <div></div>
+
                 </div>
 
               </div>
@@ -608,25 +486,25 @@ function App() {
             <div className="feature-strip">
 
               <Feature
-                icon="SEC"
+                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
                 title="Secure"
                 text="Environment"
               />
 
               <Feature
-                icon="AI"
+                icon={<MonitorCheck size={17} strokeWidth={2.4} />}
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="DATA"
+                icon={<BarChart3 size={17} strokeWidth={2.4} />}
                 title="Real-time"
                 text="Analytics"
               />
 
               <Feature
-                icon="LOCK"
+                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
                 title="Data"
                 text="Privacy"
               />
@@ -637,13 +515,13 @@ function App() {
 
         </section>
 
+        {/* RIGHT SIDE */}
+
         <section className="login-panel">
 
           <div className="login-card">
 
-            <div className="login-cap">
-              <span>CAP</span>
-            </div>
+            <div className="login-cap"><ShieldCheck size={26} strokeWidth={2.2} /></div>
 
             <h2>
               Welcome Back!
@@ -661,9 +539,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  EMAIL
-                </span>
+                <span className="input-icon"><Mail size={17} /></span>
 
                 <input
                   id="email"
@@ -685,9 +561,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  PASS
-                </span>
+                <span className="input-icon"><LockKeyhole size={17} /></span>
 
                 <input
                   id="password"
@@ -758,7 +632,9 @@ function App() {
             <div className="or-divider">
 
               <span></span>
+
               <b>OR</b>
+
               <span></span>
 
             </div>
@@ -776,9 +652,7 @@ function App() {
 
             <div className="credential-note">
 
-              <div className="note-icon">
-                INFO
-              </div>
+              <div className="note-icon"><Info size={17} /></div>
 
               <p>
                 Use your registered student credentials
@@ -788,14 +662,17 @@ function App() {
             </div>
 
             <div className="privacy-note">
-              <span>SECURE</span>
+
+              <ShieldCheck size={15} />
+
               Your privacy and security are our priority.
+
             </div>
 
           </div>
 
           <div className="copyright">
-            Copyright 2026 ExamSecure. All rights reserved.
+            © 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -812,6 +689,8 @@ function App() {
     return (
       <div className="login-page">
 
+        {/* LEFT SIDE */}
+
         <section className="login-showcase">
 
           <div className="showcase-overlay"></div>
@@ -821,7 +700,7 @@ function App() {
             <div className="brand">
 
               <div className="brand-mark">
-                <span>CAP</span>
+                <span>ES</span>
               </div>
 
               <div>
@@ -869,7 +748,9 @@ function App() {
                     </div>
 
                     <div className="screen-row wide"></div>
+
                     <div className="screen-row"></div>
+
                     <div className="screen-row"></div>
 
                     <div className="screen-button">
@@ -883,13 +764,17 @@ function App() {
                 </div>
 
                 <div className="scene-book book-one"></div>
+
                 <div className="scene-book book-two"></div>
 
                 <div className="scene-plant">
+
                   <span></span>
                   <span></span>
                   <span></span>
+
                   <div></div>
+
                 </div>
 
               </div>
@@ -899,25 +784,25 @@ function App() {
             <div className="feature-strip">
 
               <Feature
-                icon="SEC"
+                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
                 title="Secure"
                 text="Registration"
               />
 
               <Feature
-                icon="STU"
+                icon={<GraduationCap size={17} strokeWidth={2.3} />}
                 title="Student"
                 text="Portal"
               />
 
               <Feature
-                icon="AI"
+                icon={<MonitorCheck size={17} strokeWidth={2.4} />}
                 title="AI-Powered"
                 text="Monitoring"
               />
 
               <Feature
-                icon="LOCK"
+                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
                 title="Data"
                 text="Privacy"
               />
@@ -928,13 +813,13 @@ function App() {
 
         </section>
 
+        {/* RIGHT SIDE */}
+
         <section className="login-panel">
 
           <div className="login-card register-card">
 
-            <div className="login-cap">
-              <span>CAP</span>
-            </div>
+            <div className="login-cap"><ShieldCheck size={26} strokeWidth={2.2} /></div>
 
             <h2>
               Create an Account
@@ -952,9 +837,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  NAME
-                </span>
+                <span className="input-icon"><UserRound size={17} /></span>
 
                 <input
                   id="register-name"
@@ -976,9 +859,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  EMAIL
-                </span>
+                <span className="input-icon"><Mail size={17} /></span>
 
                 <input
                   id="register-email"
@@ -1000,9 +881,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  PHONE
-                </span>
+                <span className="input-icon"><Phone size={17} /></span>
 
                 <input
                   id="register-phone"
@@ -1029,9 +908,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  PASS
-                </span>
+                <span className="input-icon"><LockKeyhole size={17} /></span>
 
                 <input
                   id="register-password"
@@ -1054,9 +931,7 @@ function App() {
 
               <div className="input-wrap">
 
-                <span className="input-icon">
-                  CONFIRM
-                </span>
+                <span className="input-icon"><LockKeyhole size={17} /></span>
 
                 <input
                   id="register-confirm-password"
@@ -1096,7 +971,9 @@ function App() {
             <div className="or-divider">
 
               <span></span>
+
               <b>OR</b>
+
               <span></span>
 
             </div>
@@ -1113,14 +990,17 @@ function App() {
             </button>
 
             <div className="privacy-note">
-              <span>SECURE</span>
+
+              <ShieldCheck size={15} />
+
               Your privacy and security are our priority.
+
             </div>
 
           </div>
 
           <div className="copyright">
-            Copyright 2026 ExamSecure. All rights reserved.
+            © 2026 ExamSecure. All rights reserved.
           </div>
 
         </section>
@@ -1141,9 +1021,7 @@ function App() {
 
           <div className="portal-brand">
 
-            <div className="mini-brand-mark">
-              CAP
-            </div>
+            <div className="mini-brand-mark"><ShieldCheck size={20} strokeWidth={2.2} /></div>
 
             <strong>
               Exam<span>Secure</span>
@@ -1153,17 +1031,14 @@ function App() {
 
           <div className="portal-user">
 
-            <div className="user-avatar">
-              USER
-            </div>
+            <div className="user-avatar"><UserRound size={18} /></div>
 
             <span>
               {user?.name}
             </span>
 
-            <button
-              onClick={logout}
-            >
+            <button className="portal-logout" onClick={logout}>
+              <LogOut size={15} />
               Logout
             </button>
 
@@ -1178,7 +1053,7 @@ function App() {
           </div>
 
           <h1>
-            Welcome back, {user?.name}!
+            Welcome back, {user?.name}! 
           </h1>
 
           <p className="dashboard-intro">
@@ -1187,8 +1062,11 @@ function App() {
           </p>
 
           <div className="available-badge">
+
             <span></span>
+
             AVAILABLE
+
           </div>
 
           <section className="dashboard-card">
@@ -1198,7 +1076,7 @@ function App() {
               <div>
 
                 <h2>
-                  AI and Machine Learning Examination
+                  Aptitude Test
                 </h2>
 
                 <p>
@@ -1208,16 +1086,14 @@ function App() {
 
               </div>
 
-              <div className="card-cap">
-                EXAM
-              </div>
+              <div className="card-cap"><ClipboardCheck size={25} strokeWidth={2.1} /></div>
 
             </div>
 
             <div className="dashboard-stats">
 
               <Stat
-                icon="Q"
+                icon={<ClipboardCheck size={18} strokeWidth={2.3} />}
                 value={
                   questions.length > 0
                     ? questions.length
@@ -1227,26 +1103,26 @@ function App() {
               />
 
               <Stat
-                icon="TIME"
+                icon={<Clock3 size={18} strokeWidth={2.3} />}
                 value="30"
                 label="Minutes"
               />
 
               <Stat
-                icon="SET"
+                icon={<Shuffle size={18} strokeWidth={2.3} />}
                 value="Auto"
                 label="Question Set"
               />
 
               <Stat
-                icon="LEVEL"
+                icon={<BarChart3 size={17} strokeWidth={2.4} />}
                 value="Mixed"
                 label="Difficulty"
               />
 
             </div>
 
-            <div className="before-begin">
+            <div className="before-start">
 
               <h3>
                 Before you begin
@@ -1255,19 +1131,19 @@ function App() {
               <div className="rules-grid">
 
                 <p>
-                  Stable internet connection
+                  <><Wifi size={15} /> Stable internet connection</>
                 </p>
 
                 <p>
-                  Do not switch browser tabs
+                  <><EyeOff size={15} /> Do not switch browser tabs</>
                 </p>
 
                 <p>
-                  Answer all questions
+                  <><CheckCircle2 size={15} /> Answer all questions</>
                 </p>
 
                 <p>
-                  Timer starts immediately
+                  <><Timer size={15} /> Timer starts immediately</>
                 </p>
 
               </div>
@@ -1287,7 +1163,7 @@ function App() {
             >
               {loading
                 ? "Starting Examination..."
-                : "Start Examination"}
+                : <>Start Examination <Play size={16} fill="currentColor" /></>}
             </button>
 
           </section>
@@ -1299,73 +1175,62 @@ function App() {
   }
 
   // =========================================================
+  // EXAM PAGE
+  // ===========================================================================================================
+
+  // =========================================================
+
+  // =========================================================
+  // =========================================================
   // RESULT PAGE
   // =========================================================
 
   if (page === "result" && result) {
-    const percentage =
-      Number(result.percentage || 0);
+    const percentage = Number(result.percentage || 0);
+    const score = Number(result.score || 0);
+    const total = Number(result.total_questions || 0);
 
-    const score =
-      Number(result.score || 0);
-
-    const total =
-      Number(result.total_questions || 0);
-
-    let performance =
-      "Needs Improvement";
+    let performance = "Needs Improvement";
 
     if (percentage >= 80) {
-      performance =
-        "Excellent Performance";
+      performance = "Excellent Performance";
     } else if (percentage >= 60) {
-      performance =
-        "Good Performance";
+      performance = "Good Performance";
     } else if (percentage >= 40) {
-      performance =
-        "Average Performance";
+      performance = "Average Performance";
     }
 
     return (
-      <div className="result-page">
+      <div className="app result-page">
 
-        <header className="result-header">
+        {/* HEADER */}
+        <header className="top-header result-header">
 
           <div className="brand">
-
-            <div className="brand-mark">
-              EXAM
-            </div>
-
-            <strong>
-              Exam<span>Secure</span>
-            </strong>
-
+            <span className="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l8 4v5c0 4.5-3.4 7.9-8 9-4.6-1.1-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <strong>ExamSecure</strong>
           </div>
 
           <div className="header-user">
-
-            <div className="user-icon">
-              USER
-            </div>
-
+            <span className="user-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/></svg></span>
             {user?.name}
-
           </div>
 
           <button
             className="logout-button"
-            onClick={logout}
+            onClick={() => setPage("dashboard")}
           >
             Logout
           </button>
 
         </header>
 
+        {/* RESULT CONTENT */}
         <main className="result-main">
 
           <div className="result-container">
 
+            {/* PAGE TITLE */}
             <div className="result-title-section">
 
               <div className="result-label">
@@ -1382,16 +1247,14 @@ function App() {
 
             </div>
 
+            {/* HERO RESULT CARD */}
             <section className="result-hero-card">
 
               <div className="result-hero-left">
 
-                <div className="success-icon">
-                  PASS
-                </div>
+                <div className="success-icon"><CircleCheck size={30} strokeWidth={2.2} /></div>
 
                 <div>
-
                   <div className="completed-badge">
                     EXAM COMPLETED
                   </div>
@@ -1404,25 +1267,18 @@ function App() {
                     Well done, {result.student_name}!
                     Your examination has been successfully submitted.
                   </p>
-
                 </div>
 
               </div>
 
               <div className="question-set-badge">
-
-                <span>
-                  QUESTION SET
-                </span>
-
-                <strong>
-                  {result.question_set}
-                </strong>
-
+                <span>QUESTION SET</span>
+                <strong>{result.question_set}</strong>
               </div>
 
             </section>
 
+            {/* SCORE AREA */}
             <section className="score-dashboard">
 
               <div className="score-card main-score-card">
@@ -1433,7 +1289,6 @@ function App() {
                     className="score-ring"
                     viewBox="0 0 120 120"
                   >
-
                     <circle
                       className="score-ring-bg"
                       cx="60"
@@ -1448,24 +1303,14 @@ function App() {
                       r="50"
                       style={{
                         strokeDashoffset:
-                          314 -
-                          (314 * percentage) /
-                            100,
+                          314 - (314 * percentage) / 100
                       }}
                     />
-
                   </svg>
 
                   <div className="score-circle-content">
-
-                    <strong>
-                      {percentage}%
-                    </strong>
-
-                    <span>
-                      Score
-                    </span>
-
+                    <strong>{percentage}%</strong>
+                    <span>Score</span>
                   </div>
 
                 </div>
@@ -1478,9 +1323,7 @@ function App() {
 
                   <h2>
                     {score}
-                    <span>
-                      {" "} / {total}
-                    </span>
+                    <span> / {total}</span>
                   </h2>
 
                   <div className="performance-badge">
@@ -1493,9 +1336,7 @@ function App() {
 
               <div className="score-card">
 
-                <div className="score-card-icon">
-                  TOTAL
-                </div>
+                <div className="score-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
 
                 <span className="score-card-label">
                   TOTAL QUESTIONS
@@ -1513,9 +1354,7 @@ function App() {
 
               <div className="score-card">
 
-                <div className="score-card-icon">
-                  SCORE
-                </div>
+                <div className="score-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
 
                 <span className="score-card-label">
                   PERCENTAGE
@@ -1533,52 +1372,28 @@ function App() {
 
             </section>
 
+            {/* DETAILS */}
             <section className="result-details-grid">
 
               <div className="result-info-card">
 
                 <div className="info-card-heading">
-
-                  <span className="info-icon">
-                    STUDENT
-                  </span>
+                  <span className="info-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-3.8 3-5.7 7-5.7s6.3 1.9 7 5.7"/></svg></span>
 
                   <div>
-
-                    <h3>
-                      Student Details
-                    </h3>
-
-                    <p>
-                      Candidate information
-                    </p>
-
+                    <h3>Student Details</h3>
+                    <p>Candidate information</p>
                   </div>
-
                 </div>
 
                 <div className="info-row">
-
-                  <span>
-                    Student Name
-                  </span>
-
-                  <strong>
-                    {result.student_name}
-                  </strong>
-
+                  <span>Student Name</span>
+                  <strong>{result.student_name}</strong>
                 </div>
 
                 <div className="info-row">
-
-                  <span>
-                    Email
-                  </span>
-
-                  <strong>
-                    {result.student_email}
-                  </strong>
-
+                  <span>Email</span>
+                  <strong>{result.student_email}</strong>
                 </div>
 
               </div>
@@ -1586,65 +1401,36 @@ function App() {
               <div className="result-info-card">
 
                 <div className="info-card-heading">
-
-                  <span className="info-icon">
-                    EXAM
-                  </span>
+                  <span className="info-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-3.8 3-5.7 7-5.7s6.3 1.9 7 5.7"/></svg></span>
 
                   <div>
-
-                    <h3>
-                      Examination Details
-                    </h3>
-
-                    <p>
-                      Assessment information
-                    </p>
-
+                    <h3>Examination Details</h3>
+                    <p>Assessment information</p>
                   </div>
-
                 </div>
 
                 <div className="info-row">
-
-                  <span>
-                    Exam
-                  </span>
-
-                  <strong>
-                    {result.exam_title}
-                  </strong>
-
+                  <span>Exam</span>
+                  <strong>{result.exam_title}</strong>
                 </div>
 
                 <div className="info-row">
-
-                  <span>
-                    Question Set
-                  </span>
-
-                  <strong>
-                    {result.question_set}
-                  </strong>
-
+                  <span>Question Set</span>
+                  <strong>{result.question_set}</strong>
                 </div>
 
                 <div className="info-row">
-
-                  <span>
-                    Status
-                  </span>
-
+                  <span>Status</span>
                   <strong className="status-success">
-                    {result.status}
+                    <CircleCheck size={15} /> {result.status}
                   </strong>
-
                 </div>
 
               </div>
 
             </section>
 
+            {/* BOTTOM ACTION */}
             <div className="result-action">
 
               <button
@@ -1667,12 +1453,150 @@ function App() {
       </div>
     );
   }
+  
+  // =========================================================
+  // SELECT ANSWER
+  // =========================================================
+
+  function selectAnswer(option) {
+
+    const question =
+      questions[currentQuestion];
+
+    if (!question) {
+      return;
+    }
+
+    setAnswers((previous) => ({
+      ...previous,
+      [question.id]: option,
+    }));
+  }
+
+  // =========================================================
+  // FORMAT TIMER
+  // =========================================================
+
+  function formatTime(seconds) {
+
+    const minutes =
+      Math.floor(seconds / 60);
+
+    const secs =
+      seconds % 60;
+
+    return `${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(secs).padStart(
+      2,
+      "0"
+    )}`;
+  }
+
+  // =========================================================
+  // SUBMIT EXAM
+  // =========================================================
+
+  async function handleSubmitExam(autoSubmit = false) {
+
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setExamMessage("");
+
+    const answerList = answers;
+
+    const payload = {
+      attempt_id: attemptId,
+      answers: answerList,
+      tab_switches: tabSwitches,
+      time_remaining: timeLeft,
+    };
+
+    console.log(
+      "SUBMIT EXAM PAYLOAD:",
+      payload
+    );
+
+    try {
+
+      /*
+       * Your backend may use a different submit endpoint.
+       *
+       * We try the common Phase-1 endpoint first.
+       */
+
+      const response = await fetch(`${API_URL}/exam/${exam.id}/submit`, {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          credentials: "include",
+
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "SUBMIT EXAM RESPONSE:",
+        data
+      );
+
+      if (response.ok && data.success) {
+
+        alert(
+          autoSubmit
+            ? "Time is over. Your examination has been submitted."
+            : "Examination submitted successfully."
+        );
+
+        setResult(data.result || data);
+        setPage("result");
+
+      } else {
+
+        /*
+         * If your backend doesn't currently have
+         * /attempt/submit, don't destroy the user's
+         * current answers.
+         */
+
+        setExamMessage(
+          data.message ||
+            "Unable to submit examination."
+        );
+
+        setSubmitting(false);
+      }
+
+    } catch (error) {
+
+      console.error(
+        "SUBMIT EXAM ERROR:",
+        error
+      );
+
+      setExamMessage(
+        "Cannot connect to backend while submitting."
+      );
+
+      setSubmitting(false);
+    }
+  }
 
   // =========================================================
   // EMPTY QUESTIONS
   // =========================================================
 
   if (!questions || questions.length === 0) {
+
     return (
       <div className="loading-screen">
 
@@ -1704,44 +1628,50 @@ function App() {
   return (
     <div className="exam-page">
 
-      <header className="exam-header">
+      <header className="exam-navbar">
 
-        <div className="exam-title">
+        <div className="portal-brand">
 
-          <div className="exam-title-icon">
-            EXAM
+          <div className="mini-brand-mark">
+            ES
           </div>
 
-          <div>
-
-            <strong>
-              ExamSecure
-            </strong>
-
-            <span>
-              Online Examination
-            </span>
-
-          </div>
+          <strong>
+            Exam<span>Secure</span>
+          </strong>
 
         </div>
 
-        <div className="exam-header-right">
+        <div className="exam-title-mini">
 
-          <div className="timer">
+          <span>
+            ONLINE EXAMINATION
+          </span>
 
-            <span>
-              Time
-            </span>
+          <strong>
+            {exam?.title || "Aptitude Test"}
+          </strong>
 
-            <strong>
-              {formatTime(timeLeft)}
-            </strong>
+        </div>
 
+        <div className="exam-actions">
+
+          <div className="exam-user"><UserRound size={15} /> {user?.name}</div>
+
+          <div
+            className={
+              `exam-timer ${
+                timeLeft < 300
+                  ? "warning"
+                  : ""
+              }`
+            }
+          >
+            <Timer size={15} /> {formatTime(timeLeft)}
           </div>
 
           <button
-            className="logout-button"
+            className="exam-logout"
             onClick={() => {
               const confirmLogout =
                 window.confirm(
@@ -1753,6 +1683,7 @@ function App() {
               }
             }}
           >
+            <LogOut size={15} />
             Logout
           </button>
 
@@ -1760,250 +1691,168 @@ function App() {
 
       </header>
 
-      <main className="exam-layout">
+      <main className="exam-main">
 
-        <div>
+        <div className="exam-topline">
 
-          <div className="exam-topline">
+          <div>
 
-            <div>
+            <span className="set-badge">
+              Question Set {questionSet || "A"}
+            </span>
 
-              <span className="set-badge">
-                Question Set {questionSet || "A"}
-              </span>
-
-              <h1>
-                {exam?.title ||
-                  "AI and Machine Learning Examination"}
-              </h1>
-
-            </div>
-
-            <div className="answered-summary">
-
-              <strong>
-                {answeredCount}/{questions.length}
-              </strong>
-
-              <span>
-                Answered
-              </span>
-
-            </div>
+            <h1>
+              {exam?.title ||
+                "Aptitude Test"}
+            </h1>
 
           </div>
 
-          <div className="progress-track">
+          <div className="answered-summary">
 
-            <div
-              style={{
-                width: `${progress}%`,
-              }}
-            />
+            <strong>
+              {answeredCount}/{questions.length}
+            </strong>
 
-          </div>
-
-          {tabSwitches > 0 && (
-            <div className="monitoring-warning">
-
-              Tab switches detected:
-              {" "}
-
-              <strong>
-                {tabSwitches}
-              </strong>
-
-            </div>
-          )}
-
-          {examMessage && (
-            <div className="error-message">
-              {examMessage}
-            </div>
-          )}
-
-          <section className="question-card">
-
-            <div className="question-card-header">
-
-              <span className="question-number">
-                Question {currentQuestion + 1} of{" "}
-                {questions.length}
-              </span>
-
-              <span className="question-category">
-                Question Set {questionSet || "A"}
-              </span>
-
-            </div>
-
-            <div className="question-body">
-
-              <h2>
-                {question.question_text}
-              </h2>
-
-              <div className="options">
-
-                {[
-                  ["A", question.option_a],
-                  ["B", question.option_b],
-                  ["C", question.option_c],
-                  ["D", question.option_d],
-                ].map(
-                  ([letter, text]) => (
-                    <button
-                      key={letter}
-                      type="button"
-                      className={
-                        answers[question.id] ===
-                        letter
-                          ? "option selected"
-                          : "option"
-                      }
-                      onClick={() =>
-                        selectAnswer(letter)
-                      }
-                      disabled={submitting}
-                    >
-
-                      <span className="option-letter">
-                        {letter}
-                      </span>
-
-                      <span>
-                        {text}
-                      </span>
-
-                    </button>
-                  )
-                )}
-
-              </div>
-
-            </div>
-
-          </section>
-
-          <div className="question-navigation">
-
-            <button
-              type="button"
-              className="nav-button"
-              disabled={
-                currentQuestion === 0 ||
-                submitting
-              }
-              onClick={() =>
-                setCurrentQuestion(
-                  (q) => q - 1
-                )
-              }
-            >
-              Previous
-            </button>
-
-            <div className="question-dots">
-
-              {questions.map(
-                (item, index) => (
-
-                  <button
-                    type="button"
-                    key={item.id}
-                    className={
-                      index ===
-                      currentQuestion
-                        ? "dot active"
-                        : answers[item.id]
-                        ? "dot answered"
-                        : "dot"
-                    }
-                    onClick={() =>
-                      setCurrentQuestion(
-                        index
-                      )
-                    }
-                    disabled={submitting}
-                  >
-                    {index + 1}
-                  </button>
-
-                )
-              )}
-
-            </div>
-
-            {currentQuestion <
-            questions.length - 1 ? (
-
-              <button
-                type="button"
-                className="nav-button"
-                disabled={submitting}
-                onClick={() =>
-                  setCurrentQuestion(
-                    (q) => q + 1
-                  )
-                }
-              >
-                Next
-              </button>
-
-            ) : (
-
-              <button
-                type="button"
-                className="submit-button"
-                disabled={submitting}
-                onClick={() => {
-
-                  const confirmSubmit =
-                    window.confirm(
-                      `You answered ${answeredCount} out of ${questions.length} questions. Submit examination?`
-                    );
-
-                  if (confirmSubmit) {
-                    handleSubmitExam(false);
-                  }
-
-                }}
-              >
-                {submitting
-                  ? "Submitting..."
-                  : "Submit Examination"}
-
-              </button>
-
-            )}
+            <span>
+              Answered
+            </span>
 
           </div>
 
         </div>
 
-        <aside className="exam-sidebar">
+        <div className="progress-track">
 
-          <h3>
-            Question Navigation
-          </h3>
+          <div
+            style={{
+              width: `${progress}%`,
+            }}
+          />
 
-          <div className="question-grid">
+        </div>
+
+        {tabSwitches > 0 && (
+          <div className="monitoring-warning">
+
+            <AlertTriangle size={16} /> Tab switches detected:
+            {" "}
+            <strong>
+              {tabSwitches}
+            </strong>
+
+          </div>
+        )}
+
+        {examMessage && (
+          <div className="error-message">
+            {examMessage}
+          </div>
+        )}
+
+        <section className="question-card">
+
+          <div className="question-number">
+
+            Question{" "}
+            {currentQuestion + 1}
+            {" "}of{" "}
+            {questions.length}
+
+          </div>
+
+          <h2>
+            {question.question_text}
+          </h2>
+
+          <div className="options">
+
+            {[
+              ["A", question.option_a],
+              ["B", question.option_b],
+              ["C", question.option_c],
+              ["D", question.option_d],
+            ].map(
+              ([letter, text]) => (
+
+                <button
+                  key={letter}
+                  type="button"
+                  className={
+                    answers[question.id] ===
+                    letter
+                      ? "option selected"
+                      : "option"
+                  }
+                  onClick={() =>
+                    selectAnswer(letter)
+                  }
+                  disabled={submitting}
+                >
+
+                  <span className="option-letter">
+                    {letter}
+                  </span>
+
+                  <span>
+                    {text}
+                  </span>
+
+                  {answers[
+                    question.id
+                  ] === letter && (
+                    <span className="selected-check" aria-label="Selected">
+                      <CircleCheck size={18} />
+                    </span>
+                  )}
+
+                </button>
+
+              )
+            )}
+
+          </div>
+
+        </section>
+
+        <div className="question-navigation">
+
+          <button
+            type="button"
+            className="nav-button"
+            disabled={
+              currentQuestion === 0 ||
+              submitting
+            }
+            onClick={() =>
+              setCurrentQuestion(
+                (q) => q - 1
+              )
+            }
+          >
+            Previous
+          </button>
+
+          <div className="question-dots">
 
             {questions.map(
               (item, index) => (
 
                 <button
-                  key={item.id}
                   type="button"
+                  key={item.id}
                   className={
-                    index === currentQuestion
-                      ? "question-dot active"
+                    index ===
+                    currentQuestion
+                      ? "dot active"
                       : answers[item.id]
-                      ? "question-dot answered"
-                      : "question-dot"
+                      ? "dot answered"
+                      : "dot"
                   }
                   onClick={() =>
-                    setCurrentQuestion(index)
+                    setCurrentQuestion(
+                      index
+                    )
                   }
                   disabled={submitting}
                 >
@@ -2015,29 +1864,50 @@ function App() {
 
           </div>
 
-          <button
-            type="button"
-            className="submit-button"
-            disabled={submitting}
-            onClick={() => {
+          {currentQuestion <
+          questions.length - 1 ? (
 
-              const confirmSubmit =
-                window.confirm(
-                  `You answered ${answeredCount} out of ${questions.length} questions. Submit examination?`
-                );
-
-              if (confirmSubmit) {
-                handleSubmitExam(false);
+            <button
+              type="button"
+              className="nav-button"
+              disabled={submitting}
+              onClick={() =>
+                setCurrentQuestion(
+                  (q) => q + 1
+                )
               }
+            >
+              Next
+              <ArrowRight size={16} />
+            </button>
 
-            }}
-          >
-            {submitting
-              ? "Submitting..."
-              : "Submit Examination"}
-          </button>
+          ) : (
 
-        </aside>
+            <button
+              type="button"
+              className="submit-button"
+              disabled={submitting}
+              onClick={() => {
+
+                const confirmSubmit =
+                  window.confirm(
+                    `You answered ${answeredCount} out of ${questions.length} questions. Submit examination?`
+                  );
+
+                if (confirmSubmit) {
+                  handleSubmitExam(false);
+                }
+
+              }}
+            >
+              {submitting
+                ? "Submitting..."
+                : <>Submit Examination <FileCheck2 size={16} /></>}
+            </button>
+
+          )}
+
+        </div>
 
       </main>
 
@@ -2047,9 +1917,31 @@ function App() {
 
 export default App;
 
-// =========================================================
-// FEATURE COMPONENT
-// =========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function Feature({
   icon,
@@ -2058,30 +1950,17 @@ function Feature({
 }) {
   return (
     <div className="feature-item">
-
       <div className="feature-icon">
         {icon}
       </div>
 
       <div>
-
-        <h3>
-          {title}
-        </h3>
-
-        <p>
-          {text}
-        </p>
-
+        <h3>{title}</h3>
+        <p>{text}</p>
       </div>
-
     </div>
   );
 }
-
-// =========================================================
-// STAT COMPONENT
-// =========================================================
 
 function Stat({
   icon,
@@ -2089,24 +1968,29 @@ function Stat({
   label,
 }) {
   return (
-    <div className="stat">
-
+    <div className="stat-card">
       <div className="stat-icon">
         {icon}
       </div>
 
-      <div>
-
-        <strong>
+      <div className="stat-content">
+        <div className="stat-value">
           {value}
-        </strong>
+        </div>
 
-        <span>
+        <div className="stat-label">
           {label}
-        </span>
-
+        </div>
       </div>
-
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
