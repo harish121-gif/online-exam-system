@@ -1,798 +1,2000 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+const API_URL = "/api";
 
-const API_URL = "http://127.0.0.1:5000";
-const EXAM_ID = 1;
-const QUESTION_SET = "A";
+// =========================================================
+// =========================================================
 
-import { useEffect, useState } from "react";
-import "./App.css";
-const EXAM_ID = 1;
-const QUESTION_SET = "A";
+
+// =========================================================
+// MAIN APP
+// =========================================================
 
 function App() {
   const [user, setUser] = useState(null);
+  const [page, setPage] = useState("login");
+
+  // Login
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Registration
+  const [registerName, setRegisterName] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerConfirmPassword, setRegisterConfirmPassword] =
+    useState("");
+
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Exam
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-
-  const [loading, setLoading] = useState(true);
-  const [examLoading, setExamLoading] = useState(false);
-  const [examStarted, setExamStarted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [questionSet, setQuestionSet] = useState("");
+  const [attemptId, setAttemptId] = useState(null);
   const [result, setResult] = useState(null);
-  const [message, setMessage] = useState("");
 
-  // =====================================================
-  // CHECK SESSION
-  // =====================================================
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
 
   useEffect(() => {
-    checkCurrentUser();
+    checkSession();
   }, []);
 
-  const checkCurrentUser = async () => {
+  // =========================================================
+  // REMEMBER EMAIL
+  // =========================================================
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(
+      "examsecure_remember_email"
+    );
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  // =========================================================
+  // SESSION CHECK
+  // =========================================================
+
+async function checkSession() {
+  try {
+    const response = await fetch(`${API_URL}/me`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    const data = await response.json();
+
+    console.log("SESSION RESPONSE:", data);
+
+    if (response.ok && data.success) {
+      setUser(data.user);
+
+      if (data.user.role === "student") {
+        setPage("dashboard");
+      }
+    }
+  } catch (error) {
+    console.error("SESSION CHECK ERROR:", error);
+  }
+}
+
+  // =========================================================
+  // LOGIN
+  // =========================================================
+
+  async function handleLogin(event) {
+    event.preventDefault();
+
+    setMessage("");
+    setLoading(true);
+
     try {
-        method: "GET",
+      const response = await fetch(`${API_URL}/student/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        setUser(data.user);
-        await loadExam();
-      }
-    } catch (error) {
-      console.error("Session error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // =====================================================
-  // LOAD EXAM
-  // =====================================================
-
-  const loadExam = async () => {
-    setExamLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch(
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setExam(data.exam);
-      } else {
-        setMessage(
-          data.message || "Unable to load examination."
-        );
-      }
-    } catch (error) {
-      console.error("Exam error:", error);
-      setMessage("Unable to connect to examination server.");
-    } finally {
-      setExamLoading(false);
-    }
-  };
-
-  // =====================================================
-  // LOGIN
-  // =====================================================
-
-  const handleLogin = async (event) => {
-    event.preventDefault();
-
-    setMessage("");
-
-    try {
-      const email = event.target.email.value;
-      const password = event.target.password.value;
-
-      const response = await fetch(
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        }
-      );
-
-      const data = await response.json();
+      console.log("LOGIN RESPONSE:", data);
 
       if (response.ok && data.success) {
         setUser(data.user);
-        await loadExam();
+        setPage("dashboard");
+
+        setPassword("");
+        setMessage("");
+
+        if (rememberMe) {
+          localStorage.setItem(
+            "examsecure_remember_email",
+            data.user.email
+          );
+        } else {
+          localStorage.removeItem(
+            "examsecure_remember_email"
+          );
+        }
       } else {
         setMessage(
           data.message || "Invalid email or password."
         );
       }
     } catch (error) {
-      console.error("Login error:", error);
-      setMessage("Backend connection failed.");
-    }
-  };
+      console.error("LOGIN ERROR:", error);
 
-  // =====================================================
-  // START EXAM
-  // =====================================================
-
-  const startExam = async () => {
-    setMessage("");
-    setExamLoading(true);
-
-    try {
-      const response = await fetch(
-        {
-          method: "GET",
-          credentials: "include",
-        }
+      setMessage(
+        "Cannot connect to backend. Please check the server."
       );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setQuestions(data.questions);
-        setCurrentQuestion(0);
-        setAnswers({});
-        setResult(null);
-
-        setTimeLeft(
-          Number(data.exam.duration_minutes) * 60
-        );
-
-        setExamStarted(true);
-      } else {
-        setMessage(
-          data.message || "Unable to load questions."
-        );
-      }
-    } catch (error) {
-      console.error("Question loading error:", error);
-      setMessage("Unable to load examination questions.");
     } finally {
-      setExamLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
-  // =====================================================
-  // TIMER
-  // =====================================================
+  // =========================================================
+  // REGISTRATION
+  // =========================================================
 
-  useEffect(() => {
-    if (!examStarted || timeLeft <= 0) {
+  async function handleRegister(event) {
+    event.preventDefault();
+
+    setMessage("");
+
+    if (
+      registerPassword !==
+      registerConfirmPassword
+    ) {
+      setMessage("Passwords do not match.");
       return;
     }
 
-    const timer = setInterval(() => {
-      setTimeLeft((previous) => previous - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [examStarted, timeLeft]);
-
-  // Auto submit when timer reaches zero
-  useEffect(() => {
-    if (examStarted && timeLeft === 0) {
-      submitExam();
-    }
-  }, [timeLeft, examStarted]);
-
-  // =====================================================
-  // FORMAT TIMER
-  // =====================================================
-
-  const formatTime = () => {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-
-    return `${String(minutes).padStart(2, "0")}:${String(
-      seconds
-    ).padStart(2, "0")}`;
-  };
-
-  // =====================================================
-  // SELECT ANSWER
-  // =====================================================
-
-  const selectAnswer = (questionId, option) => {
-    setAnswers((previous) => ({
-      ...previous,
-      [String(questionId)]: option,
-    }));
-  };
-
-  // =====================================================
-  // SUBMIT EXAM
-  // =====================================================
-
-  const submitExam = async () => {
-    if (submitting) {
+    if (registerPhone.length !== 10) {
+      setMessage(
+        "Please enter a valid 10-digit phone number."
+      );
       return;
     }
 
-    setSubmitting(true);
+    setLoading(true);
 
     try {
-      const response = await fetch(
-        {
+      const response = await fetch(`${API_URL}/student/register`, {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           credentials: "include",
+
           body: JSON.stringify({
-            question_set: QUESTION_SET,
-            answers,
+            name: registerName.trim(),
+            email: registerEmail.trim(),
+            phone: registerPhone,
+            password: registerPassword,
           }),
         }
       );
 
       const data = await response.json();
 
+      console.log(
+        "REGISTER RESPONSE:",
+        data
+      );
+
       if (response.ok && data.success) {
-        setResult(data.result);
-        setExamStarted(false);
+        setMessage(
+          "Registration successful! You can now login."
+        );
+
+        setRegisterName("");
+        setRegisterEmail("");
+        setRegisterPhone("");
+        setRegisterPassword("");
+        setRegisterConfirmPassword("");
+
+        setTimeout(() => {
+          setMessage("");
+          setPage("login");
+        }, 1500);
       } else {
         setMessage(
-          data.message || "Unable to submit examination."
+          data.message ||
+            "Registration failed."
         );
       }
     } catch (error) {
-      console.error("Submit error:", error);
-      setMessage("Unable to submit examination.");
+      console.error(
+        "REGISTER ERROR:",
+        error
+      );
+
+      setMessage(
+        "Cannot connect to backend."
+      );
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  };
-
-  // =====================================================
-  // LOGOUT
-  // =====================================================
-
-  const logout = async () => {
-    try {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-
-    setUser(null);
-    setExam(null);
-    setQuestions([]);
-    setAnswers({});
-    setResult(null);
-    setExamStarted(false);
-    setCurrentQuestion(0);
-  };
-
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (loading) {
-    return (
-      <div className="center-screen">
-        <h1>🎓 ExamSecure</h1>
-        <p>Checking your session...</p>
-      </div>
-    );
   }
 
-  // =====================================================
-  // LOGIN PAGE
-  // =====================================================
+  // =========================================================
+  // LOGOUT
+  // =========================================================
 
-  if (!user) {
+async function logout() {
+  try {
+    await fetch(`${API_URL}/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error("LOGOUT ERROR:", error);
+  }
+
+  setUser(null);
+  setPage("login");
+
+  setExam(null);
+  setQuestions([]);
+  setQuestionSet("");
+  setAttemptId(null);
+  setMessage("");
+}
+  // =========================================================
+  // START EXAM
+  // =========================================================
+
+  async function startExam() {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/exam/2/start`, { method: "POST", credentials: "include" });
+
+      const data = await response.json();
+
+      console.log(
+        "START EXAM RESPONSE:",
+        data
+      );
+
+      if (response.ok && data.success) {
+        setExam(data.exam);
+        setQuestions(
+          Array.isArray(data.questions)
+            ? data.questions
+            : []
+        );
+
+        setQuestionSet(
+          data.question_set || ""
+        );
+
+        setAttemptId(
+          data.attempt_id || null
+        );
+
+        setPage("exam");
+      } else {
+        setMessage(
+          data.message ||
+            "Unable to start examination."
+        );
+      }
+    } catch (error) {
+      console.error(
+        "START EXAM ERROR:",
+        error
+      );
+
+      setMessage(
+        "Cannot connect to backend."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // =========================================================
+  // LOGIN PAGE
+  // =========================================================
+
+  if (page === "login") {
     return (
       <div className="login-page">
-        <div className="login-card">
-          <div className="logo-circle">🎓</div>
 
-          <div className="secure-label">
-            SECURE EXAMINATION PORTAL
-          </div>
+        {/* LEFT SIDE */}
 
-          <h1>Online Examination System</h1>
+        <section className="login-showcase">
 
-          <p className="login-subtitle">
-            Sign in to access your examination dashboard
-          </p>
+          <div className="showcase-overlay"></div>
 
-          <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <label htmlFor="email">
-                Student Email
-              </label>
+          <div className="showcase-content">
 
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="student@example.com"
-                required
-              />
+            <div className="brand">
+
+              <div className="brand-mark">
+                <span>🎓</span>
+              </div>
+
+              <div>
+                <strong>
+                  Exam<span>Secure</span>
+                </strong>
+
+                <small>
+                  AI-Based Online Examination Monitoring
+                </small>
+              </div>
+
             </div>
 
-            <div className="form-group">
+            <div className="showcase-main">
+
+              <div className="eyebrow">
+                SMART EXAMINATION PLATFORM
+              </div>
+
+              <h1>
+                Secure Exams.
+                <br />
+                Trusted <span>Integrity.</span>
+                <br />
+                Better Learning.
+              </h1>
+
+              <div className="showcase-line"></div>
+
+              <p>
+                Advanced AI monitoring helps create
+                a fair, transparent and secure
+                examination experience for every student.
+              </p>
+
+              <div className="exam-scene">
+
+                <div className="scene-glow"></div>
+
+                <div className="laptop">
+
+                  <div className="laptop-screen">
+
+                    <div className="screen-top">
+                      ONLINE EXAM
+                    </div>
+
+                    <div className="screen-row wide"></div>
+
+                    <div className="screen-row"></div>
+
+                    <div className="screen-row"></div>
+
+                    <div className="screen-button">
+                      START
+                    </div>
+
+                  </div>
+
+                  <div className="laptop-base"></div>
+
+                </div>
+
+                <div className="scene-book book-one"></div>
+
+                <div className="scene-book book-two"></div>
+
+                <div className="scene-plant">
+
+                  <span></span>
+                  <span></span>
+                  <span></span>
+
+                  <div></div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="feature-strip">
+
+              <Feature
+                icon="🛡️"
+                title="Secure"
+                text="Environment"
+              />
+
+              <Feature
+                icon="🧠"
+                title="AI-Powered"
+                text="Monitoring"
+              />
+
+              <Feature
+                icon="📊"
+                title="Real-time"
+                text="Analytics"
+              />
+
+              <Feature
+                icon="🔒"
+                title="Data"
+                text="Privacy"
+              />
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* RIGHT SIDE */}
+
+        <section className="login-panel">
+
+          <div className="login-card">
+
+            <div className="login-cap">
+              <span>🎓</span>
+            </div>
+
+            <h2>
+              Welcome Back!
+            </h2>
+
+            <p className="login-subtitle">
+              Sign in to continue to your student portal
+            </p>
+
+            <form onSubmit={handleLogin}>
+
+              <label htmlFor="email">
+                Email Address
+              </label>
+
+              <div className="input-wrap">
+
+                <span className="input-icon">
+                  ✉
+                </span>
+
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="student1@exam.com"
+                  value={email}
+                  onChange={(e) =>
+                    setEmail(e.target.value)
+                  }
+                  required
+                  autoComplete="email"
+                />
+
+              </div>
+
               <label htmlFor="password">
                 Password
               </label>
 
-              <input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Enter your password"
-                required
-              />
-            </div>
+              <div className="input-wrap">
 
-            <button
-              className="primary-button"
-              type="submit"
-            >
-              Sign In →
-            </button>
-          </form>
+                <span className="input-icon">
+                  🔒
+                </span>
 
-          {message && (
-            <div className="message error">
-              {message}
-            </div>
-          )}
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) =>
+                    setPassword(e.target.value)
+                  }
+                  required
+                  autoComplete="current-password"
+                />
 
-          <div className="security">
-            🔒 Protected Examination Environment
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // =====================================================
-  // RESULT PAGE
-  // =====================================================
-
-  if (result) {
-    return (
-      <div className="result-page-wrapper">
-        <header className="navbar">
-          <div>
-            <h2>🎓 ExamSecure</h2>
-            <span>Online Examination System</span>
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={logout}
-          >
-            Logout
-          </button>
-        </header>
-
-        <main className="result-page">
-          <div className="result-card">
-            <div className="result-icon">🎉</div>
-
-            <h1>Examination Completed</h1>
-
-            <p>
-              Your examination has been submitted
-              successfully.
-            </p>
-
-            <div className="score-circle">
-              <strong>{result.percentage}%</strong>
-              <span>Score</span>
-            </div>
-
-            <div className="result-grid">
-              <div>
-                <span>Total Questions</span>
-                <strong>
-                  {result.total_questions}
-                </strong>
               </div>
 
-              <div>
-                <span>Answered</span>
-                <strong>{result.answered}</strong>
-              </div>
+              <div className="login-options">
 
-              <div>
-                <span>Correct</span>
-                <strong>{result.correct}</strong>
-              </div>
+                <label className="remember">
 
-              <div>
-                <span>Wrong</span>
-                <strong>{result.wrong}</strong>
-              </div>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) =>
+                      setRememberMe(
+                        e.target.checked
+                      )
+                    }
+                  />
 
-              <div>
-                <span>Unanswered</span>
-                <strong>{result.unanswered}</strong>
-              </div>
+                  <span>
+                    Remember me
+                  </span>
 
-              <div>
-                <span>Score</span>
-                <strong>{result.score}</strong>
-              </div>
-            </div>
+                </label>
 
-            <button
-              className="primary-button"
-              onClick={logout}
-            >
-              Exit Examination
-            </button>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // =====================================================
-  // EXAM PAGE
-  // =====================================================
-
-  if (examStarted) {
-    const question = questions[currentQuestion];
-
-    if (!question) {
-      return (
-        <div className="center-screen">
-          <h2>Loading questions...</h2>
-        </div>
-      );
-    }
-
-    const selectedAnswer =
-      answers[String(question.id)];
-
-    const answeredCount =
-      Object.keys(answers).length;
-
-    const progress =
-      ((currentQuestion + 1) / questions.length) * 100;
-
-    return (
-      <div className="exam-page">
-        <header className="exam-navbar">
-          <div>
-            <h2>🎓 ExamSecure</h2>
-            <span>{exam?.title}</span>
-          </div>
-
-          <div className="timer">
-            ⏱️ {formatTime()}
-          </div>
-        </header>
-
-        <main className="exam-main">
-          <div className="exam-top">
-            <div>
-              Question{" "}
-              <strong>{currentQuestion + 1}</strong>{" "}
-              of <strong>{questions.length}</strong>
-            </div>
-
-            <div>
-              Answered:{" "}
-              <strong>{answeredCount}</strong>/
-              {questions.length}
-            </div>
-          </div>
-
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          <div className="question-card">
-            <div className="question-category">
-              {question.category}
-            </div>
-
-            <h1>{question.question_text}</h1>
-
-            <div className="options">
-              {[
-                ["A", question.option_a],
-                ["B", question.option_b],
-                ["C", question.option_c],
-                ["D", question.option_d],
-              ].map(([option, text]) => (
                 <button
-                  key={option}
                   type="button"
-                  className={`option ${
-                    selectedAnswer === option
-                      ? "selected"
-                      : ""
-                  }`}
+                  className="forgot-button"
                   onClick={() =>
-                    selectAnswer(
-                      question.id,
-                      option
+                    setMessage(
+                      "Please contact your institution to reset your password."
                     )
                   }
                 >
-                  <span className="option-letter">
-                    {option}
-                  </span>
-
-                  <span>{text}</span>
+                  Forgot password?
                 </button>
-              ))}
+
+              </div>
+
+              {message && (
+                <div className="error-message">
+                  {message}
+                </div>
+              )}
+
+              <button
+                className="login-button"
+                type="submit"
+                disabled={loading}
+              >
+                {loading
+                  ? "Signing in..."
+                  : "Student Login →"}
+              </button>
+
+            </form>
+
+            <div className="or-divider">
+
+              <span></span>
+
+              <b>OR</b>
+
+              <span></span>
+
             </div>
-          </div>
 
-          <div className="question-palette">
-            <h3>Questions</h3>
-
-            <div className="palette-grid">
-              {questions.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`palette-button ${
-                    index === currentQuestion
-                      ? "current"
-                      : ""
-                  } ${
-                    answers[String(item.id)]
-                      ? "answered"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    setCurrentQuestion(index)
-                  }
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="exam-navigation">
             <button
               type="button"
-              className="secondary-button"
-              disabled={currentQuestion === 0}
-              onClick={() =>
-                setCurrentQuestion(
-                  currentQuestion - 1
-                )
-              }
+              className="register-button"
+              onClick={() => {
+                setMessage("");
+                setPage("register");
+              }}
             >
-              ← Previous
+              Create an Account
             </button>
 
-            {currentQuestion <
-            questions.length - 1 ? (
-              <button
-                type="button"
-                className="primary-button next-button"
-                onClick={() =>
-                  setCurrentQuestion(
-                    currentQuestion + 1
-                  )
-                }
-              >
-                Next →
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="submit-button"
-                onClick={submitExam}
-                disabled={submitting}
-              >
-                {submitting
-                  ? "Submitting..."
-                  : "Submit Examination"}
-              </button>
-            )}
+            <div className="credential-note">
+
+              <div className="note-icon">
+                ⓘ
+              </div>
+
+              <p>
+                Use your registered student credentials
+                provided by your institution.
+              </p>
+
+            </div>
+
+            <div className="privacy-note">
+
+              <span>🛡️</span>
+
+              Your privacy and security are our priority.
+
+            </div>
+
           </div>
-        </main>
+
+          <div className="copyright">
+            © 2026 ExamSecure. All rights reserved.
+          </div>
+
+        </section>
+
       </div>
     );
   }
 
-  // =====================================================
-  // STUDENT DASHBOARD
-  // =====================================================
+  // =========================================================
+  // REGISTRATION PAGE
+  // =========================================================
 
-  return (
-    <div className="dashboard-page">
-      <header className="navbar">
-        <div>
-          <h2>🎓 ExamSecure</h2>
-          <span>Online Examination System</span>
-        </div>
+  if (page === "register") {
+    return (
+      <div className="login-page">
 
-        <div className="user-area">
-          <div>
-            <strong>{user.name}</strong>
-            <small>Student</small>
+        {/* LEFT SIDE */}
+
+        <section className="login-showcase">
+
+          <div className="showcase-overlay"></div>
+
+          <div className="showcase-content">
+
+            <div className="brand">
+
+              <div className="brand-mark">
+                <span>🎓</span>
+              </div>
+
+              <div>
+                <strong>
+                  Exam<span>Secure</span>
+                </strong>
+
+                <small>
+                  AI-Based Online Examination Monitoring
+                </small>
+              </div>
+
+            </div>
+
+            <div className="showcase-main">
+
+              <div className="eyebrow">
+                JOIN EXAMSECURE
+              </div>
+
+              <h1>
+                Create Your
+                <br />
+                Student <span>Account.</span>
+              </h1>
+
+              <div className="showcase-line"></div>
+
+              <p>
+                Register securely and access your
+                online examinations through our
+                intelligent examination platform.
+              </p>
+
+              <div className="exam-scene">
+
+                <div className="scene-glow"></div>
+
+                <div className="laptop">
+
+                  <div className="laptop-screen">
+
+                    <div className="screen-top">
+                      STUDENT PORTAL
+                    </div>
+
+                    <div className="screen-row wide"></div>
+
+                    <div className="screen-row"></div>
+
+                    <div className="screen-row"></div>
+
+                    <div className="screen-button">
+                      REGISTER
+                    </div>
+
+                  </div>
+
+                  <div className="laptop-base"></div>
+
+                </div>
+
+                <div className="scene-book book-one"></div>
+
+                <div className="scene-book book-two"></div>
+
+                <div className="scene-plant">
+
+                  <span></span>
+                  <span></span>
+                  <span></span>
+
+                  <div></div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="feature-strip">
+
+              <Feature
+                icon="🛡️"
+                title="Secure"
+                text="Registration"
+              />
+
+              <Feature
+                icon="🎓"
+                title="Student"
+                text="Portal"
+              />
+
+              <Feature
+                icon="🧠"
+                title="AI-Powered"
+                text="Monitoring"
+              />
+
+              <Feature
+                icon="🔒"
+                title="Data"
+                text="Privacy"
+              />
+
+            </div>
+
           </div>
 
-          <div className="avatar">
-            {user.name?.charAt(0).toUpperCase()}
-          </div>
+        </section>
 
-          <button
-            className="logout-button"
-            onClick={logout}
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+        {/* RIGHT SIDE */}
 
-      <main className="dashboard">
-        <div className="welcome">
-          <div>
-            <span>STUDENT DASHBOARD</span>
+        <section className="login-panel">
 
-            <h1>
-              Welcome back, {user.name} 👋
-            </h1>
+          <div className="login-card register-card">
 
-            <p>
-              Your examination is ready. Review the
-              details before starting your test.
+            <div className="login-cap">
+              <span>🎓</span>
+            </div>
+
+            <h2>
+              Create an Account
+            </h2>
+
+            <p className="login-subtitle">
+              Register to access your student examination portal
             </p>
-          </div>
 
-          <div className="ready">
-            ● System Ready
-          </div>
-        </div>
+            <form onSubmit={handleRegister}>
 
-        {examLoading ? (
-          <div className="loading-card">
-            Loading examination...
-          </div>
-        ) : exam ? (
-          <section className="exam-card">
-            <div className="exam-header">
-              <div className="exam-icon">📝</div>
+              <label htmlFor="register-name">
+                Full Name
+              </label>
 
-              <div>
-                <span>AVAILABLE EXAM</span>
+              <div className="input-wrap">
 
-                <h2>{exam.title}</h2>
+                <span className="input-icon">
+                  👤
+                </span>
 
-                <p>Exam ID: #{exam.id}</p>
+                <input
+                  id="register-name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={registerName}
+                  onChange={(e) =>
+                    setRegisterName(e.target.value)
+                  }
+                  required
+                  autoComplete="name"
+                />
+
               </div>
 
-              <div className="active">
-                ● Active
+              <label htmlFor="register-email">
+                Email Address
+              </label>
+
+              <div className="input-wrap">
+
+                <span className="input-icon">
+                  ✉
+                </span>
+
+                <input
+                  id="register-email"
+                  type="email"
+                  placeholder="student@example.com"
+                  value={registerEmail}
+                  onChange={(e) =>
+                    setRegisterEmail(e.target.value)
+                  }
+                  required
+                  autoComplete="email"
+                />
+
               </div>
+
+              <label htmlFor="register-phone">
+                Phone Number
+              </label>
+
+              <div className="input-wrap">
+
+                <span className="input-icon">
+                  📱
+                </span>
+
+                <input
+                  id="register-phone"
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={registerPhone}
+                  onChange={(e) =>
+                    setRegisterPhone(
+                      e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 10)
+                    )
+                  }
+                  required
+                  maxLength={10}
+                  autoComplete="tel"
+                />
+
+              </div>
+
+              <label htmlFor="register-password">
+                Password
+              </label>
+
+              <div className="input-wrap">
+
+                <span className="input-icon">
+                  🔒
+                </span>
+
+                <input
+                  id="register-password"
+                  type="password"
+                  placeholder="Create a password"
+                  value={registerPassword}
+                  onChange={(e) =>
+                    setRegisterPassword(e.target.value)
+                  }
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+
+              </div>
+
+              <label htmlFor="register-confirm-password">
+                Confirm Password
+              </label>
+
+              <div className="input-wrap">
+
+                <span className="input-icon">
+                  🔐
+                </span>
+
+                <input
+                  id="register-confirm-password"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={registerConfirmPassword}
+                  onChange={(e) =>
+                    setRegisterConfirmPassword(
+                      e.target.value
+                    )
+                  }
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+
+              </div>
+
+              {message && (
+                <div className="error-message">
+                  {message}
+                </div>
+              )}
+
+              <button
+                className="login-button"
+                type="submit"
+                disabled={loading}
+              >
+                {loading
+                  ? "Creating Account..."
+                  : "Create Account →"}
+              </button>
+
+            </form>
+
+            <div className="or-divider">
+
+              <span></span>
+
+              <b>OR</b>
+
+              <span></span>
+
             </div>
 
-            <div className="details">
-              <div>
-                <span>📋</span>
-                <small>Questions</small>
-                <strong>
-                  {exam.total_questions}
-                </strong>
-              </div>
+            <button
+              type="button"
+              className="register-button"
+              onClick={() => {
+                setMessage("");
+                setPage("login");
+              }}
+            >
+              ← Back to Student Login
+            </button>
 
-              <div>
-                <span>⏱️</span>
-                <small>Duration</small>
-                <strong>
-                  {exam.duration_minutes} Minutes
-                </strong>
-              </div>
+            <div className="privacy-note">
 
-              <div>
-                <span>🎯</span>
-                <small>Exam Type</small>
-                <strong>Aptitude Test</strong>
-              </div>
+              <span>🛡️</span>
+
+              Your privacy and security are our priority.
+
             </div>
 
-            <div className="instructions">
-              <h3>Before you begin</h3>
+          </div>
 
-              <ul>
-                <li>
-                  Make sure you have a stable internet
-                  connection.
-                </li>
+          <div className="copyright">
+            © 2026 ExamSecure. All rights reserved.
+          </div>
 
-                <li>
-                  The examination duration is{" "}
-                  <strong>
-                    {exam.duration_minutes} minutes
-                  </strong>.
-                </li>
+        </section>
 
-                <li>
-                  There are{" "}
-                  <strong>
-                    {exam.total_questions} questions
-                  </strong>.
-                </li>
+      </div>
+    );
+  }
 
-                <li>
-                  Once you start, the examination timer
-                  will begin.
-                </li>
+  // =========================================================
+  // STUDENT DASHBOARD
+  // =========================================================
 
-                <li>
-                  Make sure you answer all questions
-                  before submitting.
-                </li>
-              </ul>
+  if (page === "dashboard") {
+    return (
+      <div className="portal-page">
+
+        <header className="portal-navbar">
+
+          <div className="portal-brand">
+
+            <div className="mini-brand-mark">
+              🎓
             </div>
+
+            <strong>
+              Exam<span>Secure</span>
+            </strong>
+
+          </div>
+
+          <div className="portal-user">
+
+            <div className="user-avatar">
+              👤
+            </div>
+
+            <span>
+              {user?.name}
+            </span>
+
+            <button onClick={logout}>
+              Logout
+            </button>
+
+          </div>
+
+        </header>
+
+        <main className="dashboard-main">
+
+          <div className="portal-label">
+            STUDENT PORTAL
+          </div>
+
+          <h1>
+            Welcome back, {user?.name}! 👋
+          </h1>
+
+          <p className="dashboard-intro">
+            Your examination is ready.
+            Review the details before starting.
+          </p>
+
+          <div className="available-badge">
+
+            <span></span>
+
+            AVAILABLE
+
+          </div>
+
+          <section className="dashboard-card">
+
+            <div className="exam-card-heading">
+
+              <div>
+
+                <h2>
+                  Aptitude Test
+                </h2>
+
+                <p>
+                  AI-Based Online Examination Monitoring
+                  and Integrity System
+                </p>
+
+              </div>
+
+              <div className="card-cap">
+                🎓
+              </div>
+
+            </div>
+
+            <div className="dashboard-stats">
+
+              <Stat
+                icon="📝"
+                value={
+                  questions.length > 0
+                    ? questions.length
+                    : "20"
+                }
+                label="Questions"
+              />
+
+              <Stat
+                icon="⏱️"
+                value="30"
+                label="Minutes"
+              />
+
+              <Stat
+                icon="🎯"
+                value="Auto"
+                label="Question Set"
+              />
+
+              <Stat
+                icon="📊"
+                value="Mixed"
+                label="Difficulty"
+              />
+
+            </div>
+
+            <div className="before-start">
+
+              <h3>
+                Before you begin
+              </h3>
+
+              <div className="rules-grid">
+
+                <p>
+                  ✓ Stable internet connection
+                </p>
+
+                <p>
+                  ✓ Do not switch browser tabs
+                </p>
+
+                <p>
+                  ✓ Answer all questions
+                </p>
+
+                <p>
+                  ✓ Timer starts immediately
+                </p>
+
+              </div>
+
+            </div>
+
+            {message && (
+              <div className="error-message">
+                {message}
+              </div>
+            )}
 
             <button
               className="start-button"
               onClick={startExam}
+              disabled={loading}
             >
-              Start Examination →
+              {loading
+                ? "Starting Examination..."
+                : "Start Examination →"}
             </button>
+
           </section>
-        ) : (
-          <div className="no-exam">
-            <div>📭</div>
 
-            <h2>No Examination Available</h2>
+        </main>
 
-            <p>
-              There is currently no active examination
-              available.
-            </p>
+      </div>
+    );
+  }
+
+  // =========================================================
+  // EXAM PAGE
+  // =========================================================
+
+  // =========================================================
+  // =========================================================
+  // RESULT PAGE
+  // =========================================================
+
+  if (page === "result" && result) {
+    const percentage = Number(result.percentage || 0);
+    const score = Number(result.score || 0);
+    const total = Number(result.total_questions || 0);
+
+    let performance = "Needs Improvement";
+
+    if (percentage >= 80) {
+      performance = "Excellent Performance";
+    } else if (percentage >= 60) {
+      performance = "Good Performance";
+    } else if (percentage >= 40) {
+      performance = "Average Performance";
+    }
+
+    return (
+      <div className="app result-page">
+
+        {/* HEADER */}
+        <header className="top-header result-header">
+
+          <div className="brand">
+            <span className="brand-icon">??</span>
+            <strong>ExamSecure</strong>
+          </div>
+
+          <div className="header-user">
+            <span className="user-icon">??</span>
+            {user?.name}
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={() => setPage("dashboard")}
+          >
+            Logout
+          </button>
+
+        </header>
+
+        {/* RESULT CONTENT */}
+        <main className="result-main">
+
+          <div className="result-container">
+
+            {/* PAGE TITLE */}
+            <div className="result-title-section">
+
+              <div className="result-label">
+                EXAMINATION RESULT
+              </div>
+
+              <h1>
+                Your Examination is Complete ??
+              </h1>
+
+              <p>
+                Here is a summary of your examination performance.
+              </p>
+
+            </div>
+
+            {/* HERO RESULT CARD */}
+            <section className="result-hero-card">
+
+              <div className="result-hero-left">
+
+                <div className="success-icon">
+                  ?
+                </div>
+
+                <div>
+                  <div className="completed-badge">
+                    EXAM COMPLETED
+                  </div>
+
+                  <h2>
+                    {result.exam_title}
+                  </h2>
+
+                  <p>
+                    Well done, {result.student_name}!
+                    Your examination has been successfully submitted.
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="question-set-badge">
+                <span>QUESTION SET</span>
+                <strong>{result.question_set}</strong>
+              </div>
+
+            </section>
+
+            {/* SCORE AREA */}
+            <section className="score-dashboard">
+
+              <div className="score-card main-score-card">
+
+                <div className="score-circle">
+
+                  <svg
+                    className="score-ring"
+                    viewBox="0 0 120 120"
+                  >
+                    <circle
+                      className="score-ring-bg"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                    />
+
+                    <circle
+                      className="score-ring-progress"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      style={{
+                        strokeDashoffset:
+                          314 - (314 * percentage) / 100
+                      }}
+                    />
+                  </svg>
+
+                  <div className="score-circle-content">
+                    <strong>{percentage}%</strong>
+                    <span>Score</span>
+                  </div>
+
+                </div>
+
+                <div className="score-main-text">
+
+                  <span className="score-small-label">
+                    YOUR SCORE
+                  </span>
+
+                  <h2>
+                    {score}
+                    <span> / {total}</span>
+                  </h2>
+
+                  <div className="performance-badge">
+                    {performance}
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="score-card">
+
+                <div className="score-card-icon">
+                  ??
+                </div>
+
+                <span className="score-card-label">
+                  TOTAL QUESTIONS
+                </span>
+
+                <strong>
+                  {total}
+                </strong>
+
+                <p>
+                  Questions attempted
+                </p>
+
+              </div>
+
+              <div className="score-card">
+
+                <div className="score-card-icon">
+                  ??
+                </div>
+
+                <span className="score-card-label">
+                  PERCENTAGE
+                </span>
+
+                <strong>
+                  {percentage}%
+                </strong>
+
+                <p>
+                  Overall performance
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* DETAILS */}
+            <section className="result-details-grid">
+
+              <div className="result-info-card">
+
+                <div className="info-card-heading">
+                  <span className="info-icon">??</span>
+
+                  <div>
+                    <h3>Student Details</h3>
+                    <p>Candidate information</p>
+                  </div>
+                </div>
+
+                <div className="info-row">
+                  <span>Student Name</span>
+                  <strong>{result.student_name}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Email</span>
+                  <strong>{result.student_email}</strong>
+                </div>
+
+              </div>
+
+              <div className="result-info-card">
+
+                <div className="info-card-heading">
+                  <span className="info-icon">??</span>
+
+                  <div>
+                    <h3>Examination Details</h3>
+                    <p>Assessment information</p>
+                  </div>
+                </div>
+
+                <div className="info-row">
+                  <span>Exam</span>
+                  <strong>{result.exam_title}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Question Set</span>
+                  <strong>{result.question_set}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Status</span>
+                  <strong className="status-success">
+                    ? {result.status}
+                  </strong>
+                </div>
+
+              </div>
+
+            </section>
+
+            {/* BOTTOM ACTION */}
+            <div className="result-action">
+
+              <button
+                className="result-back-button"
+                onClick={() => setPage("dashboard")}
+              >
+                ? Back to Student Portal
+              </button>
+
+              <p>
+                Your examination result has been recorded successfully.
+              </p>
+
+            </div>
+
+          </div>
+
+        </main>
+
+      </div>
+    );
+  }
+  // =========================================================
+  // TIMER
+  // =========================================================
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((previous) => {
+
+        if (previous <= 1) {
+          clearInterval(timer);
+
+          handleSubmitExam(true);
+
+          return 0;
+        }
+
+        return previous - 1;
+      });
+
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // =========================================================
+  // TAB SWITCH DETECTION
+  // =========================================================
+
+  useEffect(() => {
+    const handleVisibility = () => {
+
+      if (document.hidden) {
+
+        setTabSwitches(
+          (previous) => previous + 1
+        );
+
+        console.log(
+          "Tab switch detected"
+        );
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+    };
+  }, []);
+
+  // =========================================================
+  // SELECT ANSWER
+  // =========================================================
+
+  function selectAnswer(option) {
+
+    const question =
+      questions[currentQuestion];
+
+    if (!question) {
+      return;
+    }
+
+    setAnswers((previous) => ({
+      ...previous,
+      [question.id]: option,
+    }));
+  }
+
+  // =========================================================
+  // FORMAT TIMER
+  // =========================================================
+
+  function formatTime(seconds) {
+
+    const minutes =
+      Math.floor(seconds / 60);
+
+    const secs =
+      seconds % 60;
+
+    return `${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(secs).padStart(
+      2,
+      "0"
+    )}`;
+  }
+
+  // =========================================================
+  // SUBMIT EXAM
+  // =========================================================
+
+  async function handleSubmitExam(autoSubmit = false) {
+
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setExamMessage("");
+
+    const answerList = answers;
+
+    const payload = {
+      attempt_id: attemptId,
+      answers: answerList,
+      tab_switches: tabSwitches,
+      time_remaining: timeLeft,
+    };
+
+    console.log(
+      "SUBMIT EXAM PAYLOAD:",
+      payload
+    );
+
+    try {
+
+      /*
+       * Your backend may use a different submit endpoint.
+       *
+       * We try the common Phase-1 endpoint first.
+       */
+
+      const response = await fetch(`${API_URL}/exam/2/submit`, {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          credentials: "include",
+
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "SUBMIT EXAM RESPONSE:",
+        data
+      );
+
+      if (response.ok && data.success) {
+
+        alert(
+          autoSubmit
+            ? "Time is over. Your examination has been submitted."
+            : "Examination submitted successfully."
+        );
+
+        onFinish();
+
+      } else {
+
+        /*
+         * If your backend doesn't currently have
+         * /attempt/submit, don't destroy the user's
+         * current answers.
+         */
+
+        setExamMessage(
+          data.message ||
+            "Unable to submit examination."
+        );
+
+        setSubmitting(false);
+      }
+
+    } catch (error) {
+
+      console.error(
+        "SUBMIT EXAM ERROR:",
+        error
+      );
+
+      setExamMessage(
+        "Cannot connect to backend while submitting."
+      );
+
+      setSubmitting(false);
+    }
+  }
+
+  // =========================================================
+  // EMPTY QUESTIONS
+  // =========================================================
+
+  if (!questions || questions.length === 0) {
+
+    return (
+      <div className="loading-screen">
+
+        <div className="spinner"></div>
+
+        <p>
+          Loading questions...
+        </p>
+
+      </div>
+    );
+  }
+
+  const question =
+    questions[currentQuestion];
+
+  const answeredCount =
+    Object.keys(answers).length;
+
+  const progress =
+    questions.length > 0
+      ? (answeredCount / questions.length) * 100
+      : 0;
+
+  // =========================================================
+  // EXAM UI
+  // =========================================================
+
+  return (
+    <div className="exam-page">
+
+      <header className="exam-navbar">
+
+        <div className="portal-brand">
+
+          <div className="mini-brand-mark">
+            🎓
+          </div>
+
+          <strong>
+            Exam<span>Secure</span>
+          </strong>
+
+        </div>
+
+        <div className="exam-title-mini">
+
+          <span>
+            ONLINE EXAMINATION
+          </span>
+
+          <strong>
+            {exam?.title || "Aptitude Test"}
+          </strong>
+
+        </div>
+
+        <div className="exam-actions">
+
+          <div className="exam-user">
+            👤 {user?.name}
+          </div>
+
+          <div
+            className={
+              `exam-timer ${
+                timeLeft < 300
+                  ? "warning"
+                  : ""
+              }`
+            }
+          >
+            ⏱ {formatTime(timeLeft)}
+          </div>
+
+          <button
+            onClick={() => {
+              const confirmLogout =
+                window.confirm(
+                  "Are you sure you want to logout? Your current examination may be lost."
+                );
+
+              if (confirmLogout) {
+                logout();
+              }
+            }}
+          >
+            Logout
+          </button>
+
+        </div>
+
+      </header>
+
+      <main className="exam-main">
+
+        <div className="exam-topline">
+
+          <div>
+
+            <span className="set-badge">
+              Question Set {questionSet || "A"}
+            </span>
+
+            <h1>
+              {exam?.title ||
+                "Aptitude Test"}
+            </h1>
+
+          </div>
+
+          <div className="answered-summary">
+
+            <strong>
+              {answeredCount}/{questions.length}
+            </strong>
+
+            <span>
+              Answered
+            </span>
+
+          </div>
+
+        </div>
+
+        <div className="progress-track">
+
+          <div
+            style={{
+              width: `${progress}%`,
+            }}
+          />
+
+        </div>
+
+        {tabSwitches > 0 && (
+          <div className="monitoring-warning">
+
+            ⚠️ Tab switches detected:
+            {" "}
+            <strong>
+              {tabSwitches}
+            </strong>
+
+          </div>
+        )}
+
+        {examMessage && (
+          <div className="error-message">
+            {examMessage}
+          </div>
+        )}
+
+        <section className="question-card">
+
+          <div className="question-number">
+
+            Question{" "}
+            {currentQuestion + 1}
+            {" "}of{" "}
+            {questions.length}
+
+          </div>
+
+          <h2>
+            {question.question_text}
+          </h2>
+
+          <div className="options">
+
+            {[
+              ["A", question.option_a],
+              ["B", question.option_b],
+              ["C", question.option_c],
+              ["D", question.option_d],
+            ].map(
+              ([letter, text]) => (
+
+                <button
+                  key={letter}
+                  type="button"
+                  className={
+                    answers[question.id] ===
+                    letter
+                      ? "option selected"
+                      : "option"
+                  }
+                  onClick={() =>
+                    selectAnswer(letter)
+                  }
+                  disabled={submitting}
+                >
+
+                  <span className="option-letter">
+                    {letter}
+                  </span>
+
+                  <span>
+                    {text}
+                  </span>
+
+                  {answers[
+                    question.id
+                  ] === letter && (
+                    <span className="selected-check">
+                      ✓
+                    </span>
+                  )}
+
+                </button>
+
+              )
+            )}
+
+          </div>
+
+        </section>
+
+        <div className="question-navigation">
+
+          <button
+            type="button"
+            className="nav-button"
+            disabled={
+              currentQuestion === 0 ||
+              submitting
+            }
+            onClick={() =>
+              setCurrentQuestion(
+                (q) => q - 1
+              )
+            }
+          >
+            ← Previous
+          </button>
+
+          <div className="question-dots">
+
+            {questions.map(
+              (item, index) => (
+
+                <button
+                  type="button"
+                  key={item.id}
+                  className={
+                    index ===
+                    currentQuestion
+                      ? "dot active"
+                      : answers[item.id]
+                      ? "dot answered"
+                      : "dot"
+                  }
+                  onClick={() =>
+                    setCurrentQuestion(
+                      index
+                    )
+                  }
+                  disabled={submitting}
+                >
+                  {index + 1}
+                </button>
+
+              )
+            )}
+
+          </div>
+
+          {currentQuestion <
+          questions.length - 1 ? (
 
             <button
-              className="secondary-button"
-              onClick={loadExam}
+              type="button"
+              className="nav-button"
+              disabled={submitting}
+              onClick={() =>
+                setCurrentQuestion(
+                  (q) => q + 1
+                )
+              }
             >
-              Refresh
+              Next →
             </button>
-          </div>
-        )}
 
-        {message && (
-          <div className="message error">
-            {message}
-          </div>
-        )}
+          ) : (
+
+            <button
+              type="button"
+              className="submit-button"
+              disabled={submitting}
+              onClick={() => {
+
+                const confirmSubmit =
+                  window.confirm(
+                    `You answered ${answeredCount} out of ${questions.length} questions. Submit examination?`
+                  );
+
+                if (confirmSubmit) {
+                  handleSubmitExam(false);
+                }
+
+              }}
+            >
+              {submitting
+                ? "Submitting..."
+                : "Submit Examination ✓"}
+            </button>
+
+          )}
+
+        </div>
+
       </main>
 
-      <footer>
-        © 2026 ExamSecure · Secure Examination
-        Environment
-      </footer>
     </div>
   );
 }
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function Feature({
+  icon,
+  title,
+  text,
+}) {
+  return (
+    <div className="feature-item">
+      <div className="feature-icon">
+        {icon}
+      </div>
+
+      <div>
+        <h3>{title}</h3>
+        <p>{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  icon,
+  value,
+  label,
+}) {
+  return (
+    <div className="stat-card">
+      <div className="stat-icon">
+        {icon}
+      </div>
+
+      <div className="stat-content">
+        <div className="stat-value">
+          {value}
+        </div>
+
+        <div className="stat-label">
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+}
