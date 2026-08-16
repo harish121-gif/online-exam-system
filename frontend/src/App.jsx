@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import "./App.css";
 const API_URL = "/api";
-const EXAM_ID = import.meta.env.VITE_EXAM_ID || "1";
+const EXAM_ID = import.meta.env.VITE_EXAM_ID || "2";
 
 // =========================================================
 // =========================================================
