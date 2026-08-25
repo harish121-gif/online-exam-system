@@ -86,6 +86,8 @@ function App() {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(30 * 60);
   const [tabSwitches, setTabSwitches] = useState(0);
+  const [copyAttempts, setCopyAttempts] = useState(0);
+  const [pasteAttempts, setPasteAttempts] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [examMessage, setExamMessage] = useState("");
 
@@ -171,6 +173,79 @@ function App() {
         "visibilitychange",
         handleVisibility
       );
+    };
+  }, [page]);
+
+  // =========================================================
+  // COPY / PASTE DETECTION
+  // =========================================================
+
+  useEffect(() => {
+    if (page !== "exam") {
+      return;
+    }
+
+    const handleCopy = (event) => {
+      event.preventDefault();
+
+      setCopyAttempts((previous) => previous + 1);
+
+      console.log("Copy attempt detected");
+    };
+
+    const handlePaste = (event) => {
+      event.preventDefault();
+
+      setPasteAttempts((previous) => previous + 1);
+
+      console.log("Paste attempt detected");
+    };
+
+    const handleCut = (event) => {
+      event.preventDefault();
+
+      console.log("Cut attempt detected");
+    };
+
+    const handleKeyboard = (event) => {
+      const key = event.key.toLowerCase();
+
+      // Ctrl + C
+      if (event.ctrlKey && key === "c") {
+        event.preventDefault();
+
+        setCopyAttempts((previous) => previous + 1);
+
+        console.log("Ctrl+C detected");
+      }
+
+      // Ctrl + V
+      if (event.ctrlKey && key === "v") {
+        event.preventDefault();
+
+        setPasteAttempts((previous) => previous + 1);
+
+        console.log("Ctrl+V detected");
+      }
+
+      // Ctrl + X
+      if (event.ctrlKey && key === "x") {
+        event.preventDefault();
+
+        console.log("Ctrl+X detected");
+      }
+    };
+
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+    document.addEventListener("cut", handleCut);
+    document.addEventListener("keydown", handleKeyboard);
+
+    return () => {
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+      document.removeEventListener("cut", handleCut);
+      document.removeEventListener("keydown", handleKeyboard);
     };
   }, [page]);
 
@@ -754,6 +829,10 @@ async function logout() {
         setAttemptId(
           data.attempt_id || null
         );
+
+        setTabSwitches(0);
+        setCopyAttempts(0);
+        setPasteAttempts(0);
 
         setPage("exam");
       } else {
@@ -2935,6 +3014,8 @@ async function logout() {
       attempt_id: attemptId,
       answers: answerList,
       tab_switches: tabSwitches,
+      copy_attempts: copyAttempts,
+      paste_attempts: pasteAttempts,
       time_remaining: timeLeft,
     };
 
@@ -3154,14 +3235,34 @@ async function logout() {
 
         </div>
 
-        {tabSwitches > 0 && (
+        {(tabSwitches > 0 ||
+          copyAttempts > 0 ||
+          pasteAttempts > 0) && (
           <div className="monitoring-warning">
 
-            <AlertTriangle size={16} /> Tab switches detected:
-            {" "}
-            <strong>
-              {tabSwitches}
-            </strong>
+            <AlertTriangle size={16} />
+
+            <span>
+              Security Monitoring:
+            </span>
+
+            {tabSwitches > 0 && (
+              <strong>
+                Tab switches: {tabSwitches}
+              </strong>
+            )}
+
+            {copyAttempts > 0 && (
+              <strong>
+                Copy: {copyAttempts}
+              </strong>
+            )}
+
+            {pasteAttempts > 0 && (
+              <strong>
+                Paste: {pasteAttempts}
+              </strong>
+            )}
 
           </div>
         )}
