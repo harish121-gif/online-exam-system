@@ -85,7 +85,7 @@ function App() {
 
   const [examForm, setExamForm] = useState({
     title: "",
-    total_questions: 20,
+    total_questions: 30,
     duration_minutes: 30,
     is_active: 1,
   });
@@ -125,6 +125,15 @@ function App() {
     }
 
     loadAdminDashboard();
+  }, [page]);
+
+  // Load student exam details
+  useEffect(() => {
+    if (page !== "dashboard") {
+      return;
+    }
+
+    loadStudentExamDetails();
   }, [page]);
 
   // =========================================================
@@ -682,7 +691,7 @@ async function checkSession() {
       if (response.ok && data.success) {
         setExamForm({
           title: "",
-          total_questions: 20,
+          total_questions: 30,
           duration_minutes: 30,
           is_active: 1,
         });
@@ -712,7 +721,7 @@ async function checkSession() {
 
     setExamForm({
       title: item.title || "",
-      total_questions: item.total_questions || 20,
+      total_questions: item.total_questions || 30,
       duration_minutes: item.duration_minutes || 30,
       is_active: Number(item.is_active) ? 1 : 0,
     });
@@ -815,6 +824,29 @@ async function logout() {
   setAttemptId(null);
   setMessage("");
 }
+  async function loadStudentExamDetails() {
+    try {
+      const response = await fetch(`${API_URL}/exam/`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && Array.isArray(data.exams)) {
+        const activeExam = data.exams.find(
+          (e) => String(e.id) === String(EXAM_ID) || Boolean(e.is_active)
+        );
+
+        if (activeExam) {
+          setExam(activeExam);
+        }
+      }
+    } catch (error) {
+      console.error("LOAD STUDENT EXAM DETAILS ERROR:", error);
+    }
+  }
+
   // =========================================================
   // START EXAM
   // =========================================================
@@ -1704,7 +1736,7 @@ async function logout() {
                   setEditingExamId(null);
                   setExamForm({
                     title: "",
-                    total_questions: 20,
+                    total_questions: 30,
                     duration_minutes: 30,
                     is_active: 1,
                   });
@@ -2615,16 +2647,15 @@ async function logout() {
               <Stat
                 icon={<ClipboardCheck size={18} strokeWidth={2.3} />}
                 value={
-                  questions.length > 0
-                    ? questions.length
-                    : "20"
+                  exam?.total_questions ||
+                  (questions.length > 0 ? questions.length : 30)
                 }
                 label="Questions"
               />
 
               <Stat
                 icon={<Clock3 size={18} strokeWidth={2.3} />}
-                value="30"
+                value={exam?.duration_minutes || "30"}
                 label="Minutes"
               />
 
