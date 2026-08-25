@@ -45,13 +45,19 @@ def dashboard():
             )
             attempts = cursor.fetchone()
 
+            cursor.execute(
+                "SELECT COUNT(*) AS total_violations FROM exam_attempt WHERE tab_switch_count > 0 OR copy_paste_count > 0"
+            )
+            violations = cursor.fetchone()
+
         return jsonify({
             "success": True,
             "statistics": {
                 "total_students": students["total_students"],
                 "total_exams": exams["total_exams"],
                 "active_exams": active_exams["active_exams"],
-                "total_attempts": attempts["total_attempts"]
+                "total_attempts": attempts["total_attempts"],
+                "total_violations": violations["total_violations"] if violations else 0
             }
         })
 

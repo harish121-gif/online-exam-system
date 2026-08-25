@@ -87,6 +87,7 @@ function App() {
     total_exams: 0,
     active_exams: 0,
     total_attempts: 0,
+    total_violations: 0,
   });
 
   // Admin Management
@@ -2203,6 +2204,19 @@ async function logout() {
             </div>
           </div>
 
+          <div className="admin-stat-card">
+            <div className="admin-stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>
+              <AlertTriangle size={24} />
+            </div>
+
+            <div>
+              <span>Malpractice Alerts</span>
+              <strong style={{ color: adminStats.total_violations > 0 ? '#dc2626' : 'inherit' }}>
+                {adminStats.total_violations || 0}
+              </strong>
+            </div>
+          </div>
+
         </div>
 
         <div className="admin-section">
@@ -2272,6 +2286,31 @@ async function logout() {
                 }}
               >
                 View Reports
+              </button>
+            </div>
+
+            <div className="admin-action-card" style={{ borderColor: '#fca5a5', background: 'linear-gradient(to bottom, #ffffff, #fff5f5)' }}>
+              <div style={{ color: '#dc2626' }}>
+                <AlertTriangle size={28} />
+              </div>
+
+              <h3>Malpractice Monitor</h3>
+
+              <p>
+                Track student tab switching, window blur events, copy-paste violations and malpractice alerts.
+              </p>
+
+              <button
+                type="button"
+                style={{ backgroundColor: '#dc2626' }}
+                onClick={() => {
+                  setMessage("");
+                  setSelectedAttempt(null);
+                  setPage("admin-reports");
+                  loadAdminAttempts();
+                }}
+              >
+                Monitor Malpractice
               </button>
             </div>
 
