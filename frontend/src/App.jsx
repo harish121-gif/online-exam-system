@@ -209,6 +209,13 @@ function App() {
       if (document.hidden) {
         setTabSwitches((previous) => previous + 1);
         console.log("Tab switch detected");
+        if (attemptId) {
+          fetch(`${API_URL}/attempt/${attemptId}/tab-switch`, {
+            method: "POST",
+            headers: { ...getAuthHeaders(user) },
+            credentials: "include"
+          }).catch(err => console.error("Tab switch log error:", err));
+        }
       }
     };
 
@@ -223,10 +230,10 @@ function App() {
         handleVisibility
       );
     };
-  }, [page]);
+  }, [page, attemptId, user]);
 
   // =========================================================
-  // COPY / PASTE DETECTION
+  // COPY / PASTE PREVENTION & DETECTION
   // =========================================================
 
   useEffect(() => {
@@ -234,26 +241,34 @@ function App() {
       return;
     }
 
+    const logCopyPaste = () => {
+      if (attemptId) {
+        fetch(`${API_URL}/attempt/${attemptId}/copy-paste`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(user) },
+          credentials: "include"
+        }).catch(err => console.error("Copy-paste log error:", err));
+      }
+    };
+
     const handleCopy = (event) => {
       event.preventDefault();
-
       setCopyAttempts((previous) => previous + 1);
-
       console.log("Copy attempt detected");
+      logCopyPaste();
     };
 
     const handlePaste = (event) => {
       event.preventDefault();
-
       setPasteAttempts((previous) => previous + 1);
-
       console.log("Paste attempt detected");
+      logCopyPaste();
     };
 
     const handleCut = (event) => {
       event.preventDefault();
-
       console.log("Cut attempt detected");
+      logCopyPaste();
     };
 
     const handleKeyboard = (event) => {
@@ -262,26 +277,24 @@ function App() {
       // Ctrl + C
       if (event.ctrlKey && key === "c") {
         event.preventDefault();
-
         setCopyAttempts((previous) => previous + 1);
-
         console.log("Ctrl+C detected");
+        logCopyPaste();
       }
 
       // Ctrl + V
       if (event.ctrlKey && key === "v") {
         event.preventDefault();
-
         setPasteAttempts((previous) => previous + 1);
-
         console.log("Ctrl+V detected");
+        logCopyPaste();
       }
 
       // Ctrl + X
       if (event.ctrlKey && key === "x") {
         event.preventDefault();
-
         console.log("Ctrl+X detected");
+        logCopyPaste();
       }
     };
 
@@ -1936,6 +1949,7 @@ async function logout() {
                   <th>Score</th>
                   <th>Percentage</th>
                   <th>Tab Switches</th>
+                  <th>Copy / Paste</th>
                   <th>Status</th>
                   <th>Started</th>
                   <th>Action</th>
@@ -1945,7 +1959,7 @@ async function logout() {
               <tbody>
                 {adminAttempts.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="admin-empty">
+                    <td colSpan="11" className="admin-empty">
                       No examination attempts found.
                     </td>
                   </tr>
@@ -1978,6 +1992,17 @@ async function logout() {
                         {(attempt.tab_switch_count || 0) > 0 ? (
                           <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
                             ⚠️ {attempt.tab_switch_count} switch{(attempt.tab_switch_count || 0) > 1 ? "es" : ""}
+                          </span>
+                        ) : (
+                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
+                            ✓ 0 Clean
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {(attempt.copy_paste_count || 0) > 0 ? (
+                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
+                            ⚠️ {attempt.copy_paste_count} copy/paste
                           </span>
                         ) : (
                           <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
