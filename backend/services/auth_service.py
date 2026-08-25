@@ -1,6 +1,5 @@
 from functools import wraps
-
-from flask import session, jsonify
+from flask import session, jsonify, request
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -61,24 +60,86 @@ def logout_user():
 
 
 # ============================================================
-# CURRENT USER
+# CURRENT USER HELPER FUNCTIONS
 # ============================================================
+
+def get_current_student_id():
+    """
+    Get current logged-in student ID from session or headers/request.
+    """
+    if "user_id" in session and session.get("role") == "student":
+        try:
+            return int(session["user_id"])
+        except (ValueError, TypeError):
+            pass
+
+    user_id_hdr = request.headers.get("X-User-Id")
+    user_role_hdr = request.headers.get("X-User-Role", "student")
+
+    if user_id_hdr and user_role_hdr == "student":
+        try:
+            return int(user_id_hdr)
+        except (ValueError, TypeError):
+            pass
+
+    if request.is_json and request.get_json(silent=True):
+        data = request.get_json(silent=True) or {}
+        if "student_id" in data:
+            try:
+                return int(data["student_id"])
+            except (ValueError, TypeError):
+                pass
+
+    return None
+
+
+def get_current_admin_id():
+    """
+    Get current logged-in admin ID from session or headers.
+    """
+    if "user_id" in session and session.get("role") == "admin":
+        return session["user_id"]
+
+    user_id_hdr = request.headers.get("X-User-Id")
+    user_role_hdr = request.headers.get("X-User-Role")
+
+    if user_id_hdr and user_role_hdr == "admin":
+        try:
+            return int(user_id_hdr)
+        except (ValueError, TypeError):
+            pass
+
+    return None
+
 
 def get_current_user():
     """
-    Return the currently logged-in user.
+    Return the currently logged-in user details.
     """
-
     user_id = session.get("user_id")
+    role = session.get("role", "student")
+    name = session.get("name")
+    email = session.get("email")
+
+    if not user_id:
+        user_id_hdr = request.headers.get("X-User-Id")
+        if user_id_hdr:
+            try:
+                user_id = int(user_id_hdr)
+                role = request.headers.get("X-User-Role", "student")
+                name = request.headers.get("X-User-Name", "Student")
+                email = request.headers.get("X-User-Email", "")
+            except (ValueError, TypeError):
+                pass
 
     if not user_id:
         return None
 
     return {
         "id": user_id,
-        "name": session.get("name"),
-        "email": session.get("email"),
-        "role": session.get("role", "student")
+        "name": name,
+        "email": email,
+        "role": role
     }
 
 
@@ -90,8 +151,7 @@ def is_logged_in():
     """
     Check whether a user is logged in.
     """
-
-    return session.get("user_id") is not None
+    return get_current_user() is not None
 
 
 # ============================================================

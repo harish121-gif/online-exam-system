@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, jsonify, session, send_from_directory
+from flask import Flask, jsonify, session
 from flask_cors import CORS
 
 from config import Config
@@ -16,14 +16,7 @@ from routes.attempt import attempt_bp
 
 def create_app():
 
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
-
-    app = Flask(
-        __name__,
-        static_folder=FRONTEND_DIST,
-        static_url_path=""
-    )
+    app = Flask(__name__)
 
     # ============================================================
     # FLASK CONFIGURATION
@@ -32,7 +25,8 @@ def create_app():
     app.config["SECRET_KEY"] = Config.SECRET_KEY
 
     is_production = (
-        os.getenv("RENDER") == "true" or os.getenv("FLASK_ENV", "development").lower() == "production"
+        os.getenv("FLASK_ENV", "development").lower()
+        == "production"
     )
 
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -64,11 +58,7 @@ def create_app():
         ],
         allow_headers=[
             "Content-Type",
-            "Authorization",
-            "X-User-Id",
-            "X-User-Role",
-            "X-User-Name",
-            "X-User-Email"
+            "Authorization"
         ]
     )
 
@@ -86,8 +76,9 @@ def create_app():
     # ============================================================
     # HOME
     # ============================================================
-    @app.route("/api")
-    def api_home():
+
+    @app.route("/")
+    def home():
 
         return jsonify({
             "success": True,
@@ -298,23 +289,6 @@ def create_app():
     # ============================================================
     # RETURN APP
     # ============================================================
-    # ============================================================
-    # REACT FRONTEND
-    # ============================================================
-
-    @app.route("/")
-    def serve_frontend():
-        return send_from_directory(FRONTEND_DIST, "index.html")
-
-    @app.route("/<path:path>")
-    def serve_react(path):
-        file_path = os.path.join(FRONTEND_DIST, path)
-
-        if os.path.isfile(file_path):
-            return send_from_directory(FRONTEND_DIST, path)
-
-        return send_from_directory(FRONTEND_DIST, "index.html")
-
 
     return app
 
@@ -337,11 +311,3 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
-
-
-
-
-
-
-
-

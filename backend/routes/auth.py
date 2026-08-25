@@ -3,7 +3,8 @@ from models.db import get_connection
 
 from services.auth_service import (
     hash_password,
-    verify_password
+    verify_password,
+    get_current_user
 )
 
 
@@ -385,8 +386,9 @@ def admin_login():
 @auth_bp.route("/me", methods=["GET"])
 def current_user():
 
-    if "user_id" not in session:
+    user = get_current_user()
 
+    if not user or not user.get("id"):
         return jsonify({
             "success": False,
             "message": "Not logged in"
@@ -394,14 +396,9 @@ def current_user():
 
     return jsonify({
         "success": True,
-        "user": {
-            "id": session.get("user_id"),
-            "name": session.get("name"),
-            "email": session.get("email"),
-            "username": session.get("username"),
-            "role": session.get("role")
-        }
+        "user": user
     })
+
 
 
 # ============================================================

@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, session
 
 from models.db import get_connection
-from services.auth_service import admin_required
+from services.auth_service import admin_required, get_current_student_id
 
 
 exam_bp = Blueprint(
@@ -103,17 +103,13 @@ def start_exam(exam_id):
     # CHECK STUDENT SESSION
     # --------------------------------------------------------
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
 
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
-
-    student_id = session["user_id"]
 
     connection = get_connection()
 
@@ -471,17 +467,14 @@ def submit_exam(exam_id):
     # CHECK STUDENT SESSION
     # --------------------------------------------------------
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
 
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
 
-    student_id = session["user_id"]
 
     data = request.get_json() or {}
 
@@ -707,17 +700,14 @@ def get_exam_result(exam_id):
     # CHECK STUDENT SESSION
     # --------------------------------------------------------
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
 
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
 
-    student_id = session["user_id"]
 
     connection = get_connection()
 

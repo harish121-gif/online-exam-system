@@ -8,6 +8,13 @@ import {
 } from "lucide-react";
 import "./App.css";
 const getApiUrl = () => {
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1")
+  ) {
+    return "/api";
+  }
   const envUrl = import.meta.env.VITE_API_URL;
   if (
     envUrl &&
@@ -16,18 +23,31 @@ const getApiUrl = () => {
   ) {
     return envUrl.trim();
   }
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1")
-  ) {
-    return "/api";
-  }
   return "https://online-exam-system-gzy3.onrender.com/api";
 };
 
 const API_URL = getApiUrl();
 const EXAM_ID = import.meta.env.VITE_EXAM_ID || "2";
+
+const getAuthHeaders = (currentUser) => {
+  let stored = currentUser;
+  if (!stored) {
+    try {
+      stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+    } catch {
+      stored = null;
+    }
+  }
+  if (stored && stored.id) {
+    return {
+      "X-User-Id": String(stored.id),
+      "X-User-Role": String(stored.role || "student"),
+      "X-User-Name": String(stored.name || ""),
+      "X-User-Email": String(stored.email || "")
+    };
+  }
+  return {};
+};
 
 // =========================================================
 // =========================================================
@@ -285,6 +305,7 @@ async function checkSession() {
   try {
     const response = await fetch(`${API_URL}/me`, {
       method: "GET",
+      headers: { ...getAuthHeaders(user) },
       credentials: "include",
     });
 
@@ -294,13 +315,25 @@ async function checkSession() {
 
     if (response.ok && data.success) {
       setUser(data.user);
+      localStorage.setItem("examsecure_user", JSON.stringify(data.user));
 
       if (data.user.role === "student") {
+        setPage("dashboard");
+      }
+    } else {
+      const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+      if (stored && stored.role === "student") {
+        setUser(stored);
         setPage("dashboard");
       }
     }
   } catch (error) {
     console.error("SESSION CHECK ERROR:", error);
+    const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+    if (stored && stored.role === "student") {
+      setUser(stored);
+      setPage("dashboard");
+    }
   }
 }
 
@@ -333,6 +366,7 @@ async function checkSession() {
 
       if (response.ok && data.success) {
         setUser(data.user);
+        localStorage.setItem("examsecure_user", JSON.stringify(data.user));
         setPage("dashboard");
 
         setPassword("");
@@ -809,12 +843,14 @@ async function logout() {
   try {
     await fetch(`${API_URL}/logout`, {
       method: "POST",
+      headers: { ...getAuthHeaders(user) },
       credentials: "include",
     });
   } catch (error) {
     console.error("LOGOUT ERROR:", error);
   }
 
+  localStorage.removeItem("examsecure_user");
   setUser(null);
   setPage("login");
 
@@ -828,6 +864,7 @@ async function logout() {
     try {
       const response = await fetch(`${API_URL}/exam/`, {
         method: "GET",
+        headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
 
@@ -856,7 +893,14 @@ async function logout() {
     setMessage("");
 
     try {
-      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, { method: "POST", credentials: "include" });
+      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(user),
+        },
+        credentials: "include",
+      });
 
       const data = await response.json();
 

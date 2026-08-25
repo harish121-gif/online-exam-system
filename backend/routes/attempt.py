@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from models.db import get_connection
+from services.auth_service import get_current_student_id
 
 attempt_bp = Blueprint(
     "attempt",
@@ -15,16 +16,14 @@ attempt_bp = Blueprint(
 @attempt_bp.route("/<int:attempt_id>", methods=["GET"])
 def get_attempt(attempt_id):
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
+
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
 
-    student_id = session["user_id"]
 
     connection = get_connection()
 
@@ -86,16 +85,14 @@ def submit_attempt(attempt_id):
     # Student session check
     # --------------------------------------------------------
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
+
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
 
-    student_id = session["user_id"]
 
     data = request.get_json() or {}
 
@@ -299,16 +296,14 @@ def submit_attempt(attempt_id):
 )
 def tab_switch(attempt_id):
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
+
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
 
-    student_id = session["user_id"]
 
     connection = get_connection()
 
@@ -353,16 +348,14 @@ def tab_switch(attempt_id):
 )
 def copy_paste(attempt_id):
 
-    if (
-        "user_id" not in session
-        or session.get("role") != "student"
-    ):
+    student_id = get_current_student_id()
+
+    if not student_id:
         return jsonify({
             "success": False,
             "message": "Student login required"
         }), 401
 
-    student_id = session["user_id"]
 
     connection = get_connection()
 

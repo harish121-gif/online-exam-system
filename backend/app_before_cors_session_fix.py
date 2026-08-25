@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 from flask import Flask, jsonify, session, send_from_directory
 from flask_cors import CORS
@@ -32,7 +32,8 @@ def create_app():
     app.config["SECRET_KEY"] = Config.SECRET_KEY
 
     is_production = (
-        os.getenv("RENDER") == "true" or os.getenv("FLASK_ENV", "development").lower() == "production"
+        os.getenv("FLASK_ENV", "development").lower()
+        == "production"
     )
 
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -64,11 +65,7 @@ def create_app():
         ],
         allow_headers=[
             "Content-Type",
-            "Authorization",
-            "X-User-Id",
-            "X-User-Role",
-            "X-User-Name",
-            "X-User-Email"
+            "Authorization"
         ]
     )
 
@@ -337,9 +334,6 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
-
-
-
 
 
 
