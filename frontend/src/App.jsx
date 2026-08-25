@@ -7,7 +7,13 @@ import {
   FileCheck2, GraduationCap, Wifi, EyeOff
 } from "lucide-react";
 import "./App.css";
-const API_URL = "/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1")
+    ? "/api"
+    : "https://online-exam-system-gzy3.onrender.com/api");
 const EXAM_ID = import.meta.env.VITE_EXAM_ID || "2";
 
 // =========================================================
