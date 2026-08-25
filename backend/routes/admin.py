@@ -358,6 +358,8 @@ def get_attempts():
 
                     ea.total_questions,
                     ea.score,
+                    ea.tab_switch_count,
+                    ea.copy_paste_count,
 
                     CASE
                         WHEN ea.total_questions > 0
@@ -423,6 +425,8 @@ def get_attempt(attempt_id):
 
                     ea.total_questions,
                     ea.score,
+                    ea.tab_switch_count,
+                    ea.copy_paste_count,
 
                     CASE
                         WHEN ea.total_questions > 0

@@ -1934,6 +1934,7 @@ async function logout() {
                   <th>Set</th>
                   <th>Score</th>
                   <th>Percentage</th>
+                  <th>Tab Switches</th>
                   <th>Status</th>
                   <th>Started</th>
                   <th>Action</th>
@@ -1943,7 +1944,7 @@ async function logout() {
               <tbody>
                 {adminAttempts.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="admin-empty">
+                    <td colSpan="10" className="admin-empty">
                       No examination attempts found.
                     </td>
                   </tr>
@@ -1973,9 +1974,20 @@ async function logout() {
                         ).toFixed(2)}%
                       </td>
                       <td>
+                        {(attempt.tab_switch_count || 0) > 0 ? (
+                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
+                            ⚠️ {attempt.tab_switch_count} switch{(attempt.tab_switch_count || 0) > 1 ? "es" : ""}
+                          </span>
+                        ) : (
+                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
+                            ✓ 0 Clean
+                          </span>
+                        )}
+                      </td>
+                      <td>
                         <span
                           className={
-                            attempt.status === "submitted"
+                            attempt.status === "submitted" || attempt.status === "completed"
                               ? "status-badge active"
                               : "status-badge inactive"
                           }
