@@ -3405,37 +3405,6 @@ async function logout() {
 
         </div>
 
-        {(tabSwitches > 0 ||
-          copyAttempts > 0 ||
-          pasteAttempts > 0) && (
-          <div className="monitoring-warning">
-
-            <AlertTriangle size={16} />
-
-            <span>
-              Security Monitoring:
-            </span>
-
-            {tabSwitches > 0 && (
-              <strong>
-                Tab switches: {tabSwitches}
-              </strong>
-            )}
-
-            {copyAttempts > 0 && (
-              <strong>
-                Copy: {copyAttempts}
-              </strong>
-            )}
-
-            {pasteAttempts > 0 && (
-              <strong>
-                Paste: {pasteAttempts}
-              </strong>
-            )}
-
-          </div>
-        )}
 
         {examMessage && (
           <div className="error-message">
