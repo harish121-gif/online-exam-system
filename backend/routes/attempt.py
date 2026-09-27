@@ -117,18 +117,23 @@ def submit_attempt(attempt_id):
             cursor.execute(
                 """
                 SELECT
-                    id,
-                    student_id,
-                    exam_id,
-                    question_set,
-                    start_time,
-                    end_time,
-                    score,
-                    total_questions,
-                    status
-                FROM exam_attempt
-                WHERE id = %s
-                  AND student_id = %s
+                    ea.id,
+                    ea.student_id,
+                    s.name AS student_name,
+                    s.email AS student_email,
+                    ea.exam_id,
+                    e.title AS exam_title,
+                    ea.question_set,
+                    ea.start_time,
+                    ea.end_time,
+                    ea.score,
+                    ea.total_questions,
+                    ea.status
+                FROM exam_attempt ea
+                LEFT JOIN student s ON ea.student_id = s.id
+                LEFT JOIN exam e ON ea.exam_id = e.id
+                WHERE ea.id = %s
+                  AND ea.student_id = %s
                 """,
                 (
                     attempt_id,
@@ -211,10 +216,12 @@ def submit_attempt(attempt_id):
                     score += 1
 
             # ------------------------------------------------
-            # Determine status
+            # Determine status & percentage
             # ------------------------------------------------
 
             status = "submitted"
+            total_questions = len(question_rows) or attempt["total_questions"]
+            percentage = round((score / total_questions) * 100, 2) if total_questions > 0 else 0
 
             # ------------------------------------------------
             # Update attempt
@@ -252,9 +259,21 @@ def submit_attempt(attempt_id):
 
             "attempt_id": attempt_id,
 
+            "student_id": student_id,
+
+            "student_name": attempt.get("student_name"),
+
+            "student_email": attempt.get("student_email"),
+
+            "exam_id": attempt.get("exam_id"),
+
+            "exam_title": attempt.get("exam_title"),
+
             "score": score,
 
-            "total_questions": len(question_rows),
+            "total_questions": total_questions,
+
+            "percentage": percentage,
 
             "question_set": attempt["question_set"],
 

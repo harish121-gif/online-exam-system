@@ -3182,6 +3182,7 @@ async function logout() {
 
     const payload = {
       attempt_id: attemptId,
+      student_id: user?.id,
       answers: answerList,
       tab_switches: tabSwitches,
       copy_attempts: copyAttempts,
@@ -3197,16 +3198,15 @@ async function logout() {
     try {
 
       /*
-       * Your backend may use a different submit endpoint.
-       *
-       * We try the common Phase-1 endpoint first.
+       * Submit exam endpoint
        */
 
-      const response = await fetch(`${API_URL}/exam/${exam.id}/submit`, {
+      const response = await fetch(`${API_URL}/exam/${exam?.id || EXAM_ID}/submit`, {
           method: "POST",
 
           headers: {
             "Content-Type": "application/json",
+            ...getAuthHeaders(user),
           },
 
           credentials: "include",
@@ -3230,7 +3230,23 @@ async function logout() {
             : "Examination submitted successfully."
         );
 
-        setResult(data.result || data);
+        const total = data.total_questions || Object.keys(answerList).length || 30;
+        const score = data.score || 0;
+        const percentage = data.percentage ?? (total > 0 ? Math.round((score / total) * 100) : 0);
+
+        const resultData = {
+          ...data,
+          score,
+          total_questions: total,
+          percentage,
+          student_name: data.student_name || user?.name || "Student",
+          student_email: data.student_email || user?.email || "",
+          exam_title: data.exam_title || exam?.title || "Aptitude Test",
+          question_set: data.question_set || questionSet || "A",
+          status: data.status || "submitted"
+        };
+
+        setResult(data.result || resultData);
         setPage("result");
 
       } else {

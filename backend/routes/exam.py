@@ -511,18 +511,23 @@ def submit_exam(exam_id):
 
             cursor.execute("""
                 SELECT
-                    id,
-                    student_id,
-                    exam_id,
-                    question_set,
-                    start_time,
-                    total_questions,
-                    score,
-                    status
-                FROM exam_attempt
-                WHERE id = %s
-                  AND student_id = %s
-                  AND exam_id = %s
+                    ea.id,
+                    ea.student_id,
+                    s.name AS student_name,
+                    s.email AS student_email,
+                    ea.exam_id,
+                    e.title AS exam_title,
+                    ea.question_set,
+                    ea.start_time,
+                    ea.total_questions,
+                    ea.score,
+                    ea.status
+                FROM exam_attempt ea
+                LEFT JOIN student s ON ea.student_id = s.id
+                LEFT JOIN exam e ON ea.exam_id = e.id
+                WHERE ea.id = %s
+                  AND ea.student_id = %s
+                  AND ea.exam_id = %s
             """, (
                 attempt_id,
                 student_id,
@@ -658,7 +663,10 @@ def submit_exam(exam_id):
             "message": "Examination submitted successfully",
             "attempt_id": attempt_id,
             "student_id": student_id,
+            "student_name": attempt.get("student_name"),
+            "student_email": attempt.get("student_email"),
             "exam_id": exam_id,
+            "exam_title": attempt.get("exam_title"),
             "question_set": attempt["question_set"],
             "score": score,
             "total_questions": total_questions,
