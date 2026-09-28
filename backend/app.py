@@ -16,13 +16,24 @@ from routes.attempt import attempt_bp
 
 def create_app():
 
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
+    possible_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist"),
+        os.path.join(os.getcwd(), "frontend", "dist"),
+        os.path.join(os.getcwd(), "dist"),
+    ]
 
-    if not os.path.exists(os.path.join(FRONTEND_DIST, "index.html")):
-        FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
+    FRONTEND_DIST = None
+    for path in possible_paths:
+        if os.path.exists(os.path.join(path, "index.html")):
+            FRONTEND_DIST = path
+            break
 
-    print(f"[STATIC ASSETS] Serving frontend dist from: {FRONTEND_DIST}")
+    if not FRONTEND_DIST:
+        FRONTEND_DIST = possible_paths[0]
+
+    print(f"[STATIC ASSETS] Resolved FRONTEND_DIST: {FRONTEND_DIST}")
 
     app = Flask(
         __name__,
