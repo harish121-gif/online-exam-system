@@ -547,6 +547,16 @@ def submit_exam(exam_id):
             # CHECK STATUS
             # ------------------------------------------------
 
+            if attempt["status"] in ["terminated", "malpractice"]:
+                return jsonify({
+                    "success": False,
+                    "message": "This examination was terminated due to malpractice activity",
+                    "status": attempt["status"],
+                    "malpractice_reason": attempt.get("malpractice_reason", "Malpractice detected"),
+                    "score": 0,
+                    "total_questions": attempt["total_questions"]
+                }), 403
+
             if attempt["status"] != "in_progress":
 
                 return jsonify({
@@ -738,6 +748,9 @@ def get_exam_result(exam_id):
 
                     ea.total_questions,
                     ea.score,
+                    ea.tab_switch_count,
+                    ea.copy_paste_count,
+                    ea.malpractice_reason,
 
                     CASE
                         WHEN ea.total_questions > 0
@@ -784,6 +797,12 @@ def get_exam_result(exam_id):
                 "success": False,
                 "message": "Exam result not found"
             }), 404
+
+        if result.get("status") in ["terminated", "malpractice"]:
+            result["is_malpractice"] = True
+            result["result_generated"] = False
+            result["score"] = 0
+            result["percentage"] = 0
 
         return jsonify({
             "success": True,

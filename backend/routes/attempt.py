@@ -43,7 +43,8 @@ def get_attempt(attempt_id):
                     total_questions,
                     tab_switch_count,
                     copy_paste_count,
-                    status
+                    status,
+                    malpractice_reason
                 FROM exam_attempt
                 WHERE id = %s
                   AND student_id = %s
@@ -128,7 +129,8 @@ def submit_attempt(attempt_id):
                     ea.end_time,
                     ea.score,
                     ea.total_questions,
-                    ea.status
+                    ea.status,
+                    ea.malpractice_reason
                 FROM exam_attempt ea
                 LEFT JOIN student s ON ea.student_id = s.id
                 LEFT JOIN exam e ON ea.exam_id = e.id
@@ -151,8 +153,18 @@ def submit_attempt(attempt_id):
                 }), 404
 
             # ------------------------------------------------
-            # Prevent duplicate submission
+            # Prevent duplicate or terminated submission
             # ------------------------------------------------
+
+            if attempt["status"] in ["terminated", "malpractice"]:
+                return jsonify({
+                    "success": False,
+                    "message": "This examination was terminated due to malpractice activity",
+                    "status": attempt["status"],
+                    "malpractice_reason": attempt.get("malpractice_reason", "Malpractice detected"),
+                    "score": 0,
+                    "total_questions": attempt["total_questions"]
+                }), 403
 
             if attempt["status"] != "in_progress":
 
@@ -407,3 +419,78 @@ def copy_paste(attempt_id):
     finally:
 
         connection.close()
+
+
+# ============================================================
+# TERMINATE ATTEMPT DUE TO MALPRACTICE
+# ============================================================
+
+@attempt_bp.route(
+    "/<int:attempt_id>/terminate",
+    methods=["POST"]
+)
+def terminate_attempt(attempt_id):
+
+    student_id = get_current_student_id()
+
+    if not student_id:
+        return jsonify({
+            "success": False,
+            "message": "Student login required"
+        }), 401
+
+    data = request.get_json() or {}
+    reason = data.get("reason", "Malpractice activity detected during examination")
+
+    connection = get_connection()
+
+    try:
+
+        with connection.cursor() as cursor:
+
+            cursor.execute(
+                """
+                UPDATE exam_attempt
+                SET status = 'terminated',
+                    malpractice_reason = %s,
+                    score = 0,
+                    end_time = NOW()
+                WHERE id = %s
+                  AND student_id = %s
+                  AND status = 'in_progress'
+                """,
+                (
+                    reason,
+                    attempt_id,
+                    student_id
+                )
+            )
+
+            connection.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Examination terminated due to malpractice",
+            "attempt_id": attempt_id,
+            "status": "terminated",
+            "reason": reason
+        })
+
+    except Exception as error:
+
+        connection.rollback()
+
+        print(
+            "TERMINATE EXAM ERROR:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message": "Unable to terminate examination",
+            "error": str(error)
+        }), 500
+
+    finally:
+
+        connection.close()

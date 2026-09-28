@@ -128,6 +128,8 @@ function App() {
   const [tabSwitches, setTabSwitches] = useState(0);
   const [copyAttempts, setCopyAttempts] = useState(0);
   const [pasteAttempts, setPasteAttempts] = useState(0);
+  const [warningModal, setWarningModal] = useState(null);
+  const [isTerminating, setIsTerminating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [examMessage, setExamMessage] = useState("");
 
@@ -197,119 +199,177 @@ function App() {
   }, [page]);
 
   // =========================================================
-  // TAB SWITCH DETECTION
+  // MALPRACTICE MONITORING & TERMINATION SYSTEM
   // =========================================================
 
-  useEffect(() => {
-    if (page !== "exam") {
-      return;
+  const triggerExamTermination = async (reasonText) => {
+    if (isTerminating) return;
+    setIsTerminating(true);
+    setSubmitting(true);
+    setWarningModal(null);
+
+    console.warn("[PROCTORING TERMINATION] Terminating examination:", reasonText);
+
+    try {
+      if (attemptId) {
+        await fetch(`${API_URL}/attempt/${attemptId}/terminate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(user)
+          },
+          credentials: "include",
+          body: JSON.stringify({ reason: reasonText })
+        });
+      }
+    } catch (err) {
+      console.error("Terminate API call error:", err);
     }
+
+    setResult({
+      status: "terminated",
+      is_malpractice: true,
+      result_generated: false,
+      malpractice_reason: reasonText,
+      score: 0,
+      percentage: 0,
+      total_questions: questions.length || 30,
+      tab_switch_count: tabSwitches + 1,
+      copy_paste_count: copyAttempts + pasteAttempts,
+      student_name: user?.name || "Student",
+      student_email: user?.email || "",
+      exam_title: exam?.title || "Aptitude Test",
+      question_set: questionSet || "A"
+    });
+
+    setPage("result");
+    setSubmitting(false);
+    setIsTerminating(false);
+  };
+
+  const handleMalpracticeViolation = async (type, detail) => {
+    if (page !== "exam" || submitting || isTerminating) return;
+
+    let nextTab = tabSwitches;
+    let nextCopy = copyAttempts;
+    let nextPaste = pasteAttempts;
+
+    if (type === "tab_switch") {
+      nextTab = tabSwitches + 1;
+      setTabSwitches(nextTab);
+    } else if (type === "copy") {
+      nextCopy = copyAttempts + 1;
+      setCopyAttempts(nextCopy);
+    } else if (type === "paste") {
+      nextPaste = pasteAttempts + 1;
+      setPasteAttempts(nextPaste);
+    }
+
+    const totalViolations = nextTab + nextCopy + nextPaste;
+
+    console.warn(`[MALPRACTICE ALERT] Type: ${type} | Detail: ${detail} | Total: ${totalViolations}`);
+
+    if (attemptId) {
+      const endpoint = type === "tab_switch" ? "tab-switch" : "copy-paste";
+      fetch(`${API_URL}/attempt/${attemptId}/${endpoint}`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include"
+      }).catch(err => console.error("Violation log error:", err));
+    }
+
+    const isDirectViolation = type === "shortcut" || type === "cut" || type === "copy" || type === "paste";
+
+    if (totalViolations >= 3 || isDirectViolation) {
+      const finalReason = isDirectViolation
+        ? `Malpractice Detected: Unauthorized ${detail}`
+        : `Malpractice Limit Reached: Exceeded maximum allowed warnings (${totalViolations} violations logged - ${detail})`;
+
+      await triggerExamTermination(finalReason);
+    } else {
+      setWarningModal({
+        title: type === "tab_switch" ? "⚠️ Tab Switch Warning!" : "⚠️ Proctoring Security Alert!",
+        detail: detail,
+        count: totalViolations,
+        max: 3
+      });
+    }
+  };
+
+  // Tab switch listener
+  useEffect(() => {
+    if (page !== "exam") return;
 
     const handleVisibility = () => {
       if (document.hidden) {
-        setTabSwitches((previous) => previous + 1);
-        console.log("Tab switch detected");
-        if (attemptId) {
-          fetch(`${API_URL}/attempt/${attemptId}/tab-switch`, {
-            method: "POST",
-            headers: { ...getAuthHeaders(user) },
-            credentials: "include"
-          }).catch(err => console.error("Tab switch log error:", err));
-        }
+        handleMalpracticeViolation("tab_switch", "Navigated away from examination tab");
       }
     };
 
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibility
-    );
+    const handleWindowBlur = () => {
+      handleMalpracticeViolation("tab_switch", "Window lost focus / application switch");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleWindowBlur);
 
     return () => {
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibility
-      );
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [page, attemptId, user]);
+  }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user, submitting, isTerminating]);
 
-  // =========================================================
-  // COPY / PASTE PREVENTION & DETECTION
-  // =========================================================
-
+  // Copy / Paste & Shortcut Prevention
   useEffect(() => {
-    if (page !== "exam") {
-      return;
-    }
-
-    const logCopyPaste = () => {
-      if (attemptId) {
-        fetch(`${API_URL}/attempt/${attemptId}/copy-paste`, {
-          method: "POST",
-          headers: { ...getAuthHeaders(user) },
-          credentials: "include"
-        }).catch(err => console.error("Copy-paste log error:", err));
-      }
-    };
+    if (page !== "exam") return;
 
     const handleCopy = (event) => {
       event.preventDefault();
-      setCopyAttempts((previous) => previous + 1);
-      console.log("Copy attempt detected");
-      logCopyPaste();
+      handleMalpracticeViolation("copy", "Attempted to copy exam content");
     };
 
     const handlePaste = (event) => {
       event.preventDefault();
-      setPasteAttempts((previous) => previous + 1);
-      console.log("Paste attempt detected");
-      logCopyPaste();
+      handleMalpracticeViolation("paste", "Attempted to paste text into exam");
     };
 
     const handleCut = (event) => {
       event.preventDefault();
-      console.log("Cut attempt detected");
-      logCopyPaste();
+      handleMalpracticeViolation("cut", "Attempted to cut content");
+    };
+
+    const handleContextMenu = (event) => {
+      event.preventDefault();
+      handleMalpracticeViolation("shortcut", "Right-click context menu attempt");
     };
 
     const handleKeyboard = (event) => {
       const key = event.key.toLowerCase();
 
-      // Ctrl + C
-      if (event.ctrlKey && key === "c") {
+      if (
+        (event.ctrlKey && (key === "c" || key === "v" || key === "x" || key === "u")) ||
+        event.key === "F12" ||
+        (event.ctrlKey && event.shiftKey && (key === "i" || key === "j" || key === "c"))
+      ) {
         event.preventDefault();
-        setCopyAttempts((previous) => previous + 1);
-        console.log("Ctrl+C detected");
-        logCopyPaste();
-      }
-
-      // Ctrl + V
-      if (event.ctrlKey && key === "v") {
-        event.preventDefault();
-        setPasteAttempts((previous) => previous + 1);
-        console.log("Ctrl+V detected");
-        logCopyPaste();
-      }
-
-      // Ctrl + X
-      if (event.ctrlKey && key === "x") {
-        event.preventDefault();
-        console.log("Ctrl+X detected");
-        logCopyPaste();
+        handleMalpracticeViolation("shortcut", `Prohibited shortcut key pressed (${event.key})`);
       }
     };
 
     document.addEventListener("copy", handleCopy);
     document.addEventListener("paste", handlePaste);
     document.addEventListener("cut", handleCut);
+    document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyboard);
 
     return () => {
       document.removeEventListener("copy", handleCopy);
       document.removeEventListener("paste", handlePaste);
       document.removeEventListener("cut", handleCut);
+      document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("keydown", handleKeyboard);
     };
-  }, [page]);
+  }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user, submitting, isTerminating]);
 
   // =========================================================
   // SESSION CHECK
@@ -2857,6 +2917,111 @@ async function logout() {
   // =========================================================
 
   if (page === "result" && result) {
+    if (result.status === "terminated" || result.is_malpractice) {
+      return (
+        <div className="dashboard-page result-page malpractice-terminated-page">
+          <header className="top-header result-header" style={{ background: '#7f1d1d', borderColor: '#991b1b' }}>
+            <div className="brand" style={{ color: '#ffffff' }}>
+              <ShieldCheck size={22} color="#fca5a5" />
+              <strong style={{ color: '#ffffff' }}>ExamSecure Proctoring Engine</strong>
+            </div>
+            <div className="header-user" style={{ color: '#fecaca' }}>
+              {result.student_name || user?.name}
+            </div>
+            <button
+              className="logout-button"
+              style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)' }}
+              onClick={() => setPage("dashboard")}
+            >
+              Back to Portal
+            </button>
+          </header>
+
+          <main className="result-main">
+            <div className="result-container">
+              <div className="malpractice-alert-hero">
+                <div className="malpractice-alert-icon">
+                  <AlertTriangle size={42} color="#dc2626" />
+                </div>
+                <div className="malpractice-alert-badge">
+                  EXAM TERMINATED - MALPRACTICE DETECTED
+                </div>
+                <h1>Examination Disqualified</h1>
+                <p className="malpractice-subtitle">
+                  Your examination session was ended automatically due to security violations detected by the Proctoring System.
+                </p>
+              </div>
+
+              <div className="malpractice-details-card">
+                <div className="malpractice-reason-box">
+                  <h3>
+                    <ShieldCheck size={20} /> Detected Malpractice Activity
+                  </h3>
+                  <div className="reason-text">
+                    <strong>Violation Reason: </strong> {result.malpractice_reason || "Malpractice activity detected during examination"}
+                  </div>
+                </div>
+
+                <div className="malpractice-stats-grid">
+                  <div className="mal-stat-card">
+                    <span>Tab Switch Log</span>
+                    <strong>{result.tab_switch_count ?? tabSwitches ?? 0} Switches</strong>
+                  </div>
+                  <div className="mal-stat-card">
+                    <span>Copy/Paste Log</span>
+                    <strong>{result.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0} Attempts</strong>
+                  </div>
+                  <div className="mal-stat-card danger">
+                    <span>Result Status</span>
+                    <strong>NO RESULT GENERATED</strong>
+                  </div>
+                </div>
+
+                <div className="candidate-info-block">
+                  <h4>Candidate & Examination Information</h4>
+                  <div className="candidate-row">
+                    <span>Candidate Name</span>
+                    <strong>{result.student_name || user?.name}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Email Address</span>
+                    <strong>{result.student_email || user?.email}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Examination</span>
+                    <strong>{result.exam_title || exam?.title || "Aptitude Test"}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Question Set</span>
+                    <strong>{result.question_set || "A"}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Final Evaluation Status</span>
+                    <strong className="status-disqualified">🛑 DISQUALIFIED (SCORE: 0 / RESULT WITHHELD)</strong>
+                  </div>
+                </div>
+
+                <div className="malpractice-policy-notice">
+                  <Info size={20} style={{ flexShrink: 0, color: '#0284c7' }} />
+                  <p>
+                    <strong>Institutional Policy Notice:</strong> As per examination integrity regulations, candidates disqualified for malpractice receive a score of zero (0) and no performance certificate or result sheet will be issued. This violation record has been saved and submitted to your institution's examination committee.
+                  </p>
+                </div>
+
+                <button
+                  className="result-back-button danger-button"
+                  onClick={() => setPage("dashboard")}
+                  style={{ width: '100%', padding: '16px', fontSize: '16px', fontWeight: '800' }}
+                >
+                  Return to Student Portal
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     const percentage = Number(result.percentage || 0);
     const score = Number(result.score || 0);
     const total = Number(result.total_questions || 0);
@@ -3345,6 +3510,10 @@ async function logout() {
 
         <div className="exam-actions">
 
+          <div className={`proctoring-status-pill ${(tabSwitches + copyAttempts + pasteAttempts) > 0 ? "warning-active" : ""}`}>
+            <ShieldCheck size={14} /> AI Proctoring Active | Violations: {tabSwitches + copyAttempts + pasteAttempts}/3
+          </div>
+
           <div className="exam-user"><UserRound size={15} /> {user?.name}</div>
 
           <div
@@ -3588,6 +3757,33 @@ async function logout() {
         </div>
 
       </main>
+
+      {warningModal && (
+        <div className="malpractice-warning-overlay">
+          <div className="malpractice-warning-modal">
+            <div className="warning-modal-header">
+              <AlertTriangle size={36} color="#dc2626" />
+              <h2>{warningModal.title}</h2>
+            </div>
+            <div className="warning-modal-text">
+              {warningModal.detail}
+            </div>
+            <div className="warning-counter-badge">
+              Violation Warning {warningModal.count} of {warningModal.max}
+            </div>
+            <p className="warning-modal-danger-note">
+              <strong>Attention:</strong> Further malpractice violations will result in <strong>IMMEDIATE EXAM TERMINATION</strong> and your result will NOT be generated!
+            </p>
+            <button
+              type="button"
+              className="warning-modal-ack-button"
+              onClick={() => setWarningModal(null)}
+            >
+              I Understand & Resume Exam
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
