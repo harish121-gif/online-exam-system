@@ -1064,10 +1064,14 @@ async function logout() {
 
         setPage("exam");
       } else {
-        setMessage(
-          data.message ||
-            "Unable to start examination."
-        );
+        if (data.is_locked) {
+          setMessage(`🛑 ACCESS DENIED: Your account is locked from attempting exams for 1 hour due to a malpractice disqualification. (Time remaining: ~${data.minutes_remaining || 60} mins)`);
+        } else {
+          setMessage(
+            data.message ||
+              "Unable to start examination."
+          );
+        }
       }
     } catch (error) {
       console.error(
@@ -3005,13 +3009,13 @@ async function logout() {
   // =========================================================
 
   if (page === "result" && result) {
-    if (result.status === "terminated" || result.is_malpractice) {
+    if (result.status === "disqualified" || result.status === "terminated" || result.is_malpractice) {
       return (
         <div className="dashboard-page result-page malpractice-terminated-page">
           <header className="top-header result-header" style={{ background: '#7f1d1d', borderColor: '#991b1b' }}>
             <div className="brand" style={{ color: '#ffffff' }}>
               <ShieldCheck size={22} color="#fca5a5" />
-              <strong style={{ color: '#ffffff' }}>ExamSecure Proctoring Engine</strong>
+              <strong style={{ color: '#ffffff' }}>ExamSecure Security Engine</strong>
             </div>
             <div className="header-user" style={{ color: '#fecaca' }}>
               {result.student_name || user?.name}
@@ -3036,7 +3040,7 @@ async function logout() {
                 </div>
                 <h1>Examination Disqualified</h1>
                 <p className="malpractice-subtitle">
-                  Your examination session was ended automatically due to security violations detected by the Proctoring System.
+                  Your examination result was withheld and disqualified due to malpractice activity detected during your session.
                 </p>
               </div>
 
@@ -3046,7 +3050,7 @@ async function logout() {
                     <ShieldCheck size={20} /> Detected Malpractice Activity
                   </h3>
                   <div className="reason-text">
-                    <strong>Violation Reason: </strong> {result.malpractice_reason || "Malpractice activity detected during examination"}
+                    <strong>Violation Reason: </strong> {result.malpractice_reason || "Tab Switching / Copy & Paste activity detected during examination"}
                   </div>
                 </div>
 
@@ -3085,15 +3089,18 @@ async function logout() {
                   </div>
                   <div className="candidate-row">
                     <span>Final Evaluation Status</span>
-                    <strong className="status-disqualified">🛑 DISQUALIFIED (SCORE: 0 / RESULT WITHHELD)</strong>
+                    <strong className="status-disqualified">🛑 DISQUALIFIED (SCORE: 0 / NO RESULT GENERATED)</strong>
                   </div>
                 </div>
 
-                <div className="malpractice-policy-notice">
-                  <Info size={20} style={{ flexShrink: 0, color: '#0284c7' }} />
-                  <p>
-                    <strong>Institutional Policy Notice:</strong> As per examination integrity regulations, candidates disqualified for malpractice receive a score of zero (0) and no performance certificate or result sheet will be issued. This violation record has been saved and submitted to your institution's examination committee.
-                  </p>
+                <div className="malpractice-policy-notice" style={{ background: '#fff1f2', border: '1px solid #fca5a5' }}>
+                  <AlertTriangle size={22} style={{ flexShrink: 0, color: '#dc2626' }} />
+                  <div>
+                    <strong style={{ color: '#991b1b', display: 'block', marginBottom: '4px' }}>🛑 1-Hour Account Lockdown Active:</strong>
+                    <p style={{ color: '#7f1d1d', margin: 0 }}>
+                      As per examination rules, your account is locked from attempting or starting this examination for <strong>1 HOUR</strong> from the time of disqualification.
+                    </p>
+                  </div>
                 </div>
 
                 <button

@@ -153,6 +153,38 @@ def start_exam(exam_id):
                 }), 403
 
             # ------------------------------------------------
+            # CHECK 1-HOUR MALPRACTICE LOCKDOWN
+            # ------------------------------------------------
+            cursor.execute("""
+                SELECT
+                    id,
+                    end_time,
+                    status,
+                    malpractice_reason,
+                    TIMESTAMPDIFF(MINUTE, end_time, NOW()) AS minutes_passed
+                FROM exam_attempt
+                WHERE student_id = %s
+                  AND exam_id = %s
+                  AND (status IN ('disqualified', 'terminated') OR malpractice_reason IS NOT NULL)
+                  AND end_time >= NOW() - INTERVAL 1 HOUR
+                ORDER BY id DESC
+                LIMIT 1
+            """, (student_id, exam_id))
+
+            disqualified_attempt = cursor.fetchone()
+
+            if disqualified_attempt:
+                minutes_passed = disqualified_attempt.get("minutes_passed") or 0
+                minutes_remaining = max(1, 60 - minutes_passed)
+
+                return jsonify({
+                    "success": False,
+                    "is_locked": True,
+                    "minutes_remaining": minutes_remaining,
+                    "message": f"Access Denied: Your account is temporarily locked from attempting this exam for 1 hour due to a malpractice disqualification. Please try again in {minutes_remaining} minutes."
+                }), 403
+
+            # ------------------------------------------------
             # CHECK EXISTING ATTEMPT
             # ------------------------------------------------
 
@@ -573,7 +605,7 @@ def submit_exam(exam_id):
                 }), 400
 
             # ------------------------------------------------
-            # MALPRACTICE FLAGGING FOR ADMIN REVIEW
+            # MALPRACTICE CHECK ON SUBMISSION
             # ------------------------------------------------
             payload_tab_switches = int(data.get("tab_switches", 0))
             payload_copy_attempts = int(data.get("copy_attempts", 0))
@@ -582,14 +614,55 @@ def submit_exam(exam_id):
             total_tab_switches = (attempt.get("tab_switch_count") or 0) + payload_tab_switches
             total_copy_paste = (attempt.get("copy_paste_count") or 0) + payload_copy_attempts + payload_paste_attempts
 
-            malpractice_msg = None
             if total_tab_switches > 0 or total_copy_paste > 0:
                 reasons = []
                 if total_tab_switches > 0:
                     reasons.append(f"Tab Switching ({total_tab_switches} times)")
                 if total_copy_paste > 0:
                     reasons.append(f"Copy/Paste Activity ({total_copy_paste} times)")
-                malpractice_msg = "Flagged for Admin Review: " + " & ".join(reasons)
+                
+                malpractice_msg = "Malpractice Detected: " + " & ".join(reasons)
+
+                cursor.execute("""
+                    UPDATE exam_attempt
+                    SET score = 0,
+                        status = 'disqualified',
+                        malpractice_reason = %s,
+                        tab_switch_count = %s,
+                        copy_paste_count = %s,
+                        end_time = NOW()
+                    WHERE id = %s
+                      AND student_id = %s
+                """, (
+                    malpractice_msg,
+                    total_tab_switches,
+                    total_copy_paste,
+                    attempt_id,
+                    student_id
+                ))
+
+                connection.commit()
+
+                return jsonify({
+                    "success": True,
+                    "status": "disqualified",
+                    "is_malpractice": True,
+                    "result_generated": False,
+                    "message": "Examination disqualified due to malpractice activity",
+                    "malpractice_reason": malpractice_msg,
+                    "attempt_id": attempt_id,
+                    "student_id": student_id,
+                    "student_name": attempt.get("student_name"),
+                    "student_email": attempt.get("student_email"),
+                    "exam_id": exam_id,
+                    "exam_title": attempt.get("exam_title"),
+                    "question_set": attempt.get("question_set"),
+                    "score": 0,
+                    "percentage": 0,
+                    "total_questions": attempt.get("total_questions", 30),
+                    "tab_switch_count": total_tab_switches,
+                    "copy_paste_count": total_copy_paste
+                })
 
             # ------------------------------------------------
             # GET CORRECT ANSWERS
