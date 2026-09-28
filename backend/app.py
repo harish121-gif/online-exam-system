@@ -304,7 +304,11 @@ def create_app():
 
     @app.route("/")
     def serve_frontend():
-        return send_from_directory(FRONTEND_DIST, "index.html")
+        response = send_from_directory(FRONTEND_DIST, "index.html")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.route("/<path:path>")
     def serve_react(path):
@@ -313,7 +317,11 @@ def create_app():
         if os.path.isfile(file_path):
             return send_from_directory(FRONTEND_DIST, path)
 
-        return send_from_directory(FRONTEND_DIST, "index.html")
+        response = send_from_directory(FRONTEND_DIST, "index.html")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
 
     return app
