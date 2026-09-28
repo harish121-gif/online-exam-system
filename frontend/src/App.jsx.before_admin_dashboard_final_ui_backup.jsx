@@ -7,47 +7,8 @@ import {
   FileCheck2, GraduationCap, Wifi, EyeOff
 } from "lucide-react";
 import "./App.css";
-const getApiUrl = () => {
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1")
-  ) {
-    return "/api";
-  }
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (
-    envUrl &&
-    envUrl.trim() !== "" &&
-    envUrl.trim() !== "/api"
-  ) {
-    return envUrl.trim();
-  }
-  return "https://online-exam-system-gzy3.onrender.com/api";
-};
-
-const API_URL = getApiUrl();
+const API_URL = "/api";
 const EXAM_ID = import.meta.env.VITE_EXAM_ID || "2";
-
-const getAuthHeaders = (currentUser) => {
-  let stored = currentUser;
-  if (!stored) {
-    try {
-      stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
-    } catch {
-      stored = null;
-    }
-  }
-  if (stored && stored.id) {
-    return {
-      "X-User-Id": String(stored.id),
-      "X-User-Role": String(stored.role || "student"),
-      "X-User-Name": String(stored.name || ""),
-      "X-User-Email": String(stored.email || "")
-    };
-  }
-  return {};
-};
 
 // =========================================================
 // =========================================================
@@ -87,7 +48,6 @@ function App() {
     total_exams: 0,
     active_exams: 0,
     total_attempts: 0,
-    total_violations: 0,
   });
 
   // Admin Management
@@ -106,7 +66,7 @@ function App() {
 
   const [examForm, setExamForm] = useState({
     title: "",
-    total_questions: 30,
+    total_questions: 20,
     duration_minutes: 30,
     is_active: 1,
   });
@@ -126,10 +86,6 @@ function App() {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(30 * 60);
   const [tabSwitches, setTabSwitches] = useState(0);
-  const [copyAttempts, setCopyAttempts] = useState(0);
-  const [pasteAttempts, setPasteAttempts] = useState(0);
-  const [warningModal, setWarningModal] = useState(null);
-  const [isTerminating, setIsTerminating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [examMessage, setExamMessage] = useState("");
 
@@ -148,15 +104,6 @@ function App() {
     }
 
     loadAdminDashboard();
-  }, [page]);
-
-  // Load student exam details
-  useEffect(() => {
-    if (page !== "dashboard") {
-      return;
-    }
-
-    loadStudentExamDetails();
   }, [page]);
 
   // =========================================================
@@ -199,106 +146,33 @@ function App() {
   }, [page]);
 
   // =========================================================
-  // SILENT MALPRACTICE MONITORING (LOGGED UNTIL SUBMIT)
+  // TAB SWITCH DETECTION
   // =========================================================
 
-  const handleMalpracticeViolation = (type, detail) => {
-    if (page !== "exam") return;
-
-    if (type === "tab_switch") {
-      setTabSwitches((prev) => prev + 1);
-    } else if (type === "copy" || type === "shortcut") {
-      setCopyAttempts((prev) => prev + 1);
-    } else if (type === "paste" || type === "cut") {
-      setPasteAttempts((prev) => prev + 1);
-    }
-
-    console.log(`[SILENT MONITORING LOG] Type: ${type} | Detail: ${detail}`);
-
-    if (attemptId) {
-      const endpoint = type === "tab_switch" ? "tab-switch" : "copy-paste";
-      fetch(`${API_URL}/attempt/${attemptId}/${endpoint}`, {
-        method: "POST",
-        headers: { ...getAuthHeaders(user) },
-        credentials: "include"
-      }).catch(err => console.error("Log violation error:", err));
-    }
-  };
-
-  // Tab switch listener
   useEffect(() => {
-    if (page !== "exam") return;
+    if (page !== "exam") {
+      return;
+    }
 
     const handleVisibility = () => {
       if (document.hidden) {
-        handleMalpracticeViolation("tab_switch", "Navigated away from examination tab");
+        setTabSwitches((previous) => previous + 1);
+        console.log("Tab switch detected");
       }
     };
 
-    const handleWindowBlur = () => {
-      handleMalpracticeViolation("tab_switch", "Window lost focus / application switch");
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
     };
-  }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user]);
-
-  // Copy / Paste & Shortcut Prevention
-  useEffect(() => {
-    if (page !== "exam") return;
-
-    const handleCopy = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("copy", "Attempted to copy exam content");
-    };
-
-    const handlePaste = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("paste", "Attempted to paste text into exam");
-    };
-
-    const handleCut = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("cut", "Attempted to cut content");
-    };
-
-    const handleContextMenu = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("shortcut", "Right-click context menu attempt");
-    };
-
-    const handleKeyboard = (event) => {
-      const key = event.key.toLowerCase();
-
-      if (
-        (event.ctrlKey && (key === "c" || key === "v" || key === "x" || key === "u")) ||
-        event.key === "F12" ||
-        (event.ctrlKey && event.shiftKey && (key === "i" || key === "j" || key === "c"))
-      ) {
-        event.preventDefault();
-        handleMalpracticeViolation("shortcut", `Prohibited shortcut key pressed (${event.key})`);
-      }
-    };
-
-    document.addEventListener("copy", handleCopy);
-    document.addEventListener("paste", handlePaste);
-    document.addEventListener("cut", handleCut);
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyboard);
-
-    return () => {
-      document.removeEventListener("copy", handleCopy);
-      document.removeEventListener("paste", handlePaste);
-      document.removeEventListener("cut", handleCut);
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyboard);
-    };
-  }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user, submitting, isTerminating]);
+  }, [page]);
 
   // =========================================================
   // SESSION CHECK
@@ -308,7 +182,6 @@ async function checkSession() {
   try {
     const response = await fetch(`${API_URL}/me`, {
       method: "GET",
-      headers: { ...getAuthHeaders(user) },
       credentials: "include",
     });
 
@@ -318,25 +191,13 @@ async function checkSession() {
 
     if (response.ok && data.success) {
       setUser(data.user);
-      localStorage.setItem("examsecure_user", JSON.stringify(data.user));
 
       if (data.user.role === "student") {
-        setPage("dashboard");
-      }
-    } else {
-      const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
-      if (stored && stored.role === "student") {
-        setUser(stored);
         setPage("dashboard");
       }
     }
   } catch (error) {
     console.error("SESSION CHECK ERROR:", error);
-    const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
-    if (stored && stored.role === "student") {
-      setUser(stored);
-      setPage("dashboard");
-    }
   }
 }
 
@@ -369,7 +230,6 @@ async function checkSession() {
 
       if (response.ok && data.success) {
         setUser(data.user);
-        localStorage.setItem("examsecure_user", JSON.stringify(data.user));
         setPage("dashboard");
 
         setPassword("");
@@ -728,7 +588,7 @@ async function checkSession() {
       if (response.ok && data.success) {
         setExamForm({
           title: "",
-          total_questions: 30,
+          total_questions: 20,
           duration_minutes: 30,
           is_active: 1,
         });
@@ -758,7 +618,7 @@ async function checkSession() {
 
     setExamForm({
       title: item.title || "",
-      total_questions: item.total_questions || 30,
+      total_questions: item.total_questions || 20,
       duration_minutes: item.duration_minutes || 30,
       is_active: Number(item.is_active) ? 1 : 0,
     });
@@ -838,65 +698,6 @@ async function checkSession() {
     }
   }
 
-  async function cancelAttemptAdmin(attemptId) {
-    if (!window.confirm("Are you sure you want to disqualify this student attempt due to malpractice?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/admin/attempts/${attemptId}/cancel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(user)
-        },
-        credentials: "include",
-        body: JSON.stringify({ reason: "Disqualified by Administrator due to Malpractice Activity" })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setMessage("Attempt disqualified successfully.");
-        setSelectedAttempt(null);
-        await loadAdminAttempts();
-        await loadAdminDashboard();
-      } else {
-        setMessage(data.message || "Failed to disqualify attempt.");
-      }
-    } catch (error) {
-      console.error("DISQUALIFY ATTEMPT ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function clearAttemptFlagAdmin(attemptId) {
-    try {
-      const response = await fetch(`${API_URL}/admin/attempts/${attemptId}/clear-flag`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(user)
-        },
-        credentials: "include"
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setMessage("Malpractice flag cleared successfully.");
-        if (selectedAttempt) {
-          setSelectedAttempt({ ...selectedAttempt, malpractice_reason: null });
-        }
-        await loadAdminAttempts();
-      } else {
-        setMessage(data.message || "Failed to clear flag.");
-      }
-    } catch (error) {
-      console.error("CLEAR FLAG ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
   // =========================================================
   // LOGOUT
   // =========================================================
@@ -905,14 +706,12 @@ async function logout() {
   try {
     await fetch(`${API_URL}/logout`, {
       method: "POST",
-      headers: { ...getAuthHeaders(user) },
       credentials: "include",
     });
   } catch (error) {
     console.error("LOGOUT ERROR:", error);
   }
 
-  localStorage.removeItem("examsecure_user");
   setUser(null);
   setPage("login");
 
@@ -922,30 +721,6 @@ async function logout() {
   setAttemptId(null);
   setMessage("");
 }
-  async function loadStudentExamDetails() {
-    try {
-      const response = await fetch(`${API_URL}/exam/`, {
-        method: "GET",
-        headers: { ...getAuthHeaders(user) },
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success && Array.isArray(data.exams)) {
-        const activeExam = data.exams.find(
-          (e) => String(e.id) === String(EXAM_ID) || Boolean(e.is_active)
-        );
-
-        if (activeExam) {
-          setExam(activeExam);
-        }
-      }
-    } catch (error) {
-      console.error("LOAD STUDENT EXAM DETAILS ERROR:", error);
-    }
-  }
-
   // =========================================================
   // START EXAM
   // =========================================================
@@ -955,14 +730,7 @@ async function logout() {
     setMessage("");
 
     try {
-      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(user),
-        },
-        credentials: "include",
-      });
+      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, { method: "POST", credentials: "include" });
 
       const data = await response.json();
 
@@ -987,20 +755,12 @@ async function logout() {
           data.attempt_id || null
         );
 
-        setTabSwitches(0);
-        setCopyAttempts(0);
-        setPasteAttempts(0);
-
         setPage("exam");
       } else {
-        if (data.is_locked) {
-          setMessage(`🛑 ACCESS DENIED: Your account is locked from attempting exams for 1 hour due to a malpractice disqualification. (Time remaining: ~${data.minutes_remaining || 60} mins)`);
-        } else {
-          setMessage(
-            data.message ||
-              "Unable to start examination."
-          );
-        }
+        setMessage(
+          data.message ||
+            "Unable to start examination."
+        );
       }
     } catch (error) {
       console.error(
@@ -1846,7 +1606,7 @@ async function logout() {
                   setEditingExamId(null);
                   setExamForm({
                     title: "",
-                    total_questions: 30,
+                    total_questions: 20,
                     duration_minutes: 30,
                     is_active: 1,
                   });
@@ -2000,8 +1760,6 @@ async function logout() {
                   <th>Set</th>
                   <th>Score</th>
                   <th>Percentage</th>
-                  <th>Tab Switches</th>
-                  <th>Copy / Paste</th>
                   <th>Status</th>
                   <th>Started</th>
                   <th>Action</th>
@@ -2011,7 +1769,7 @@ async function logout() {
               <tbody>
                 {adminAttempts.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="admin-empty">
+                    <td colSpan="9" className="admin-empty">
                       No examination attempts found.
                     </td>
                   </tr>
@@ -2041,31 +1799,9 @@ async function logout() {
                         ).toFixed(2)}%
                       </td>
                       <td>
-                        {(attempt.tab_switch_count || 0) > 0 ? (
-                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
-                            ⚠️ {attempt.tab_switch_count} switch{(attempt.tab_switch_count || 0) > 1 ? "es" : ""}
-                          </span>
-                        ) : (
-                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
-                            ✓ 0 Clean
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {(attempt.copy_paste_count || 0) > 0 ? (
-                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
-                            ⚠️ {attempt.copy_paste_count} copy/paste
-                          </span>
-                        ) : (
-                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
-                            ✓ 0 Clean
-                          </span>
-                        )}
-                      </td>
-                      <td>
                         <span
                           className={
-                            attempt.status === "submitted" || attempt.status === "completed"
+                            attempt.status === "submitted"
                               ? "status-badge active"
                               : "status-badge inactive"
                           }
@@ -2185,35 +1921,6 @@ async function logout() {
                 </strong>
               </div>
 
-              {selectedAttempt.malpractice_reason && (
-                <div style={{ gridColumn: 'span 4', background: '#fee2e2', border: '1px solid #fca5a5', padding: '14px 18px', borderRadius: '12px' }}>
-                  <span style={{ color: '#991b1b', fontWeight: '800' }}>Malpractice Flag</span>
-                  <strong style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>{selectedAttempt.malpractice_reason}</strong>
-                </div>
-              )}
-
-            </div>
-
-            <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              {selectedAttempt.malpractice_reason && (
-                <button
-                  type="button"
-                  style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => clearAttemptFlagAdmin(selectedAttempt.attempt_id)}
-                >
-                  ✓ Clear Flag
-                </button>
-              )}
-
-              {selectedAttempt.status !== 'disqualified' && selectedAttempt.status !== 'terminated' && (
-                <button
-                  type="button"
-                  style={{ background: '#dc2626', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => cancelAttemptAdmin(selectedAttempt.attempt_id)}
-                >
-                  🛑 Disqualify Attempt (Set Score to 0)
-                </button>
-              )}
             </div>
 
           </div>
@@ -2310,19 +2017,6 @@ async function logout() {
             </div>
           </div>
 
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>
-              <AlertTriangle size={24} />
-            </div>
-
-            <div>
-              <span>Malpractice Alerts</span>
-              <strong style={{ color: adminStats.total_violations > 0 ? '#dc2626' : 'inherit' }}>
-                {adminStats.total_violations || 0}
-              </strong>
-            </div>
-          </div>
-
         </div>
 
         <div className="admin-section">
@@ -2392,31 +2086,6 @@ async function logout() {
                 }}
               >
                 View Reports
-              </button>
-            </div>
-
-            <div className="admin-action-card" style={{ borderColor: '#fca5a5', background: 'linear-gradient(to bottom, #ffffff, #fff5f5)' }}>
-              <div style={{ color: '#dc2626' }}>
-                <AlertTriangle size={28} />
-              </div>
-
-              <h3>Malpractice Monitor</h3>
-
-              <p>
-                Track student tab switching, window blur events, copy-paste violations and malpractice alerts.
-              </p>
-
-              <button
-                type="button"
-                style={{ backgroundColor: '#dc2626' }}
-                onClick={() => {
-                  setMessage("");
-                  setSelectedAttempt(null);
-                  setPage("admin-reports");
-                  loadAdminAttempts();
-                }}
-              >
-                Monitor Malpractice
               </button>
             </div>
 
@@ -2848,15 +2517,16 @@ async function logout() {
               <Stat
                 icon={<ClipboardCheck size={18} strokeWidth={2.3} />}
                 value={
-                  exam?.total_questions ||
-                  (questions.length > 0 ? questions.length : 30)
+                  questions.length > 0
+                    ? questions.length
+                    : "20"
                 }
                 label="Questions"
               />
 
               <Stat
                 icon={<Clock3 size={18} strokeWidth={2.3} />}
-                value={exam?.duration_minutes || "30"}
+                value="30"
                 label="Minutes"
               />
 
@@ -2938,114 +2608,6 @@ async function logout() {
   // =========================================================
 
   if (page === "result" && result) {
-    if (result.status === "disqualified" || result.status === "terminated" || result.is_malpractice) {
-      return (
-        <div className="dashboard-page result-page malpractice-terminated-page">
-          <header className="top-header result-header" style={{ background: '#7f1d1d', borderColor: '#991b1b' }}>
-            <div className="brand" style={{ color: '#ffffff' }}>
-              <ShieldCheck size={22} color="#fca5a5" />
-              <strong style={{ color: '#ffffff' }}>ExamSecure Security Engine</strong>
-            </div>
-            <div className="header-user" style={{ color: '#fecaca' }}>
-              {result.student_name || user?.name}
-            </div>
-            <button
-              className="logout-button"
-              style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)' }}
-              onClick={() => setPage("dashboard")}
-            >
-              Back to Portal
-            </button>
-          </header>
-
-          <main className="result-main">
-            <div className="result-container">
-              <div className="malpractice-alert-hero">
-                <div className="malpractice-alert-icon">
-                  <AlertTriangle size={42} color="#dc2626" />
-                </div>
-                <div className="malpractice-alert-badge">
-                  EXAM COMPLETED - DISQUALIFIED DUE TO MALPRACTICE
-                </div>
-                <h1>Examination Disqualified</h1>
-                <p className="malpractice-subtitle">
-                  You have completed and submitted your examination. However, because malpractice activity (Copy/Paste or Tab Switch) was detected during your exam session, no score or result was generated.
-                </p>
-              </div>
-
-              <div className="malpractice-details-card">
-                <div className="malpractice-reason-box">
-                  <h3>
-                    <ShieldCheck size={20} /> Detected Malpractice Activity
-                  </h3>
-                  <div className="reason-text">
-                    <strong>Violation Reason: </strong> {result.malpractice_reason || "Tab Switching / Copy & Paste activity detected during examination"}
-                  </div>
-                </div>
-
-                <div className="malpractice-stats-grid">
-                  <div className="mal-stat-card">
-                    <span>Tab Switch Log</span>
-                    <strong>{result.tab_switch_count ?? tabSwitches ?? 0} Switches</strong>
-                  </div>
-                  <div className="mal-stat-card">
-                    <span>Copy/Paste Log</span>
-                    <strong>{result.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0} Attempts</strong>
-                  </div>
-                  <div className="mal-stat-card danger">
-                    <span>Result Status</span>
-                    <strong>NO RESULT GENERATED</strong>
-                  </div>
-                </div>
-
-                <div className="candidate-info-block">
-                  <h4>Candidate & Examination Information</h4>
-                  <div className="candidate-row">
-                    <span>Candidate Name</span>
-                    <strong>{result.student_name || user?.name}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Email Address</span>
-                    <strong>{result.student_email || user?.email}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Examination</span>
-                    <strong>{result.exam_title || exam?.title || "Aptitude Test"}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Question Set</span>
-                    <strong>{result.question_set || "A"}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Final Evaluation Status</span>
-                    <strong className="status-disqualified">🛑 DISQUALIFIED (SCORE: 0 / NO RESULT GENERATED)</strong>
-                  </div>
-                </div>
-
-                <div className="malpractice-policy-notice" style={{ background: '#fff1f2', border: '1px solid #fca5a5' }}>
-                  <AlertTriangle size={22} style={{ flexShrink: 0, color: '#dc2626' }} />
-                  <div>
-                    <strong style={{ color: '#991b1b', display: 'block', marginBottom: '4px' }}>🛑 1-Hour Account Lockdown Active:</strong>
-                    <p style={{ color: '#7f1d1d', margin: 0 }}>
-                      As per examination rules, your account is locked from attempting or starting this examination for <strong>1 HOUR</strong> from the time of disqualification.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  className="result-back-button danger-button"
-                  onClick={() => setPage("dashboard")}
-                  style={{ width: '100%', padding: '16px', fontSize: '16px', fontWeight: '800' }}
-                >
-                  Return to Student Portal
-                </button>
-              </div>
-            </div>
-          </main>
-        </div>
-      );
-    }
-
     const percentage = Number(result.percentage || 0);
     const score = Number(result.score || 0);
     const total = Number(result.total_questions || 0);
@@ -3371,11 +2933,8 @@ async function logout() {
 
     const payload = {
       attempt_id: attemptId,
-      student_id: user?.id,
       answers: answerList,
       tab_switches: tabSwitches,
-      copy_attempts: copyAttempts,
-      paste_attempts: pasteAttempts,
       time_remaining: timeLeft,
     };
 
@@ -3387,15 +2946,16 @@ async function logout() {
     try {
 
       /*
-       * Submit exam endpoint
+       * Your backend may use a different submit endpoint.
+       *
+       * We try the common Phase-1 endpoint first.
        */
 
-      const response = await fetch(`${API_URL}/exam/${exam?.id || EXAM_ID}/submit`, {
+      const response = await fetch(`${API_URL}/exam/${exam.id}/submit`, {
           method: "POST",
 
           headers: {
             "Content-Type": "application/json",
-            ...getAuthHeaders(user),
           },
 
           credentials: "include",
@@ -3411,25 +2971,6 @@ async function logout() {
         data
       );
 
-      if (data.status === "terminated" || data.status === "malpractice" || data.is_malpractice || response.status === 403) {
-        setResult({
-          status: "terminated",
-          is_malpractice: true,
-          result_generated: false,
-          malpractice_reason: data.malpractice_reason || data.message || "Malpractice activity detected during examination",
-          score: 0,
-          percentage: 0,
-          total_questions: questions.length || 30,
-          student_name: user?.name || "Student",
-          student_email: user?.email || "",
-          exam_title: exam?.title || "Aptitude Test",
-          question_set: questionSet || "A"
-        });
-        setPage("result");
-        setSubmitting(false);
-        return;
-      }
-
       if (response.ok && data.success) {
 
         alert(
@@ -3438,26 +2979,16 @@ async function logout() {
             : "Examination submitted successfully."
         );
 
-        const total = data.total_questions || Object.keys(answerList).length || 30;
-        const score = data.score || 0;
-        const percentage = data.percentage ?? (total > 0 ? Math.round((score / total) * 100) : 0);
-
-        const resultData = {
-          ...data,
-          score,
-          total_questions: total,
-          percentage,
-          student_name: data.student_name || user?.name || "Student",
-          student_email: data.student_email || user?.email || "",
-          exam_title: data.exam_title || exam?.title || "Aptitude Test",
-          question_set: data.question_set || questionSet || "A",
-          status: data.status || "submitted"
-        };
-
-        setResult(data.result || resultData);
+        setResult(data.result || data);
         setPage("result");
 
       } else {
+
+        /*
+         * If your backend doesn't currently have
+         * /attempt/submit, don't destroy the user's
+         * current answers.
+         */
 
         setExamMessage(
           data.message ||
@@ -3547,10 +3078,6 @@ async function logout() {
 
         <div className="exam-actions">
 
-          <div className={`proctoring-status-pill ${(tabSwitches + copyAttempts + pasteAttempts) > 0 ? "warning-active" : ""}`}>
-            <ShieldCheck size={14} /> Security Proctoring Active | Malpractice Activity: {tabSwitches + copyAttempts + pasteAttempts}
-          </div>
-
           <div className="exam-user"><UserRound size={15} /> {user?.name}</div>
 
           <div
@@ -3627,6 +3154,17 @@ async function logout() {
 
         </div>
 
+        {tabSwitches > 0 && (
+          <div className="monitoring-warning">
+
+            <AlertTriangle size={16} /> Tab switches detected:
+            {" "}
+            <strong>
+              {tabSwitches}
+            </strong>
+
+          </div>
+        )}
 
         {examMessage && (
           <div className="error-message">
@@ -3794,33 +3332,6 @@ async function logout() {
         </div>
 
       </main>
-
-      {warningModal && (
-        <div className="malpractice-warning-overlay">
-          <div className="malpractice-warning-modal">
-            <div className="warning-modal-header">
-              <AlertTriangle size={36} color="#dc2626" />
-              <h2>{warningModal.title}</h2>
-            </div>
-            <div className="warning-modal-text">
-              {warningModal.detail}
-            </div>
-            <div className="warning-counter-badge">
-              Violation Warning {warningModal.count} of {warningModal.max}
-            </div>
-            <p className="warning-modal-danger-note">
-              <strong>Attention:</strong> Further malpractice violations will result in <strong>IMMEDIATE EXAM TERMINATION</strong> and your result will NOT be generated!
-            </p>
-            <button
-              type="button"
-              className="warning-modal-ack-button"
-              onClick={() => setWarningModal(null)}
-            >
-              I Understand & Resume Exam
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
   );
