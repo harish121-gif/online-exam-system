@@ -1,3 +1,10 @@
+import os
+import random
+import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 from flask import Blueprint, jsonify, request, session
 from models.db import get_connection
 
@@ -7,6 +14,8 @@ from services.auth_service import (
     get_current_user
 )
 
+# In-memory store for reset tokens: { email: { "code": "...", "expires_at": timestamp, "role": "..." } }
+RESET_TOKENS = {}
 
 auth_bp = Blueprint(
     "auth",
@@ -414,3 +423,194 @@ def logout():
         "success": True,
         "message": "Logged out successfully"
     })
+
+
+# ============================================================
+# FORGOT PASSWORD & RESET PASSWORD
+# ============================================================
+
+def send_email_reset_code(to_email, code, recipient_name="User"):
+    """
+    Attempts to send email via SMTP if configured.
+    Returns True if email sent, False otherwise.
+    """
+    smtp_host = os.getenv("SMTP_HOST", os.getenv("MAIL_SERVER", "smtp.gmail.com"))
+    smtp_port = int(os.getenv("SMTP_PORT", os.getenv("MAIL_PORT", "587")))
+    smtp_user = os.getenv("SMTP_USER", os.getenv("MAIL_USERNAME", ""))
+    smtp_pass = os.getenv("SMTP_PASSWORD", os.getenv("MAIL_PASSWORD", ""))
+    sender_email = os.getenv("SENDER_EMAIL", smtp_user or "noreply@examsecure.com")
+
+    if not smtp_user or not smtp_pass:
+        print(f"[FORGOT PASSWORD] SMTP credentials not set. Code for {to_email}: {code}")
+        return False
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = f"ExamSecure System <{sender_email}>"
+        msg["To"] = to_email
+        msg["Subject"] = "Your Password Reset Code - ExamSecure"
+
+        body = f"""Hello {recipient_name},
+
+You requested a password reset for your ExamSecure account.
+
+Your Password Reset Verification Code is: {code}
+
+This code is valid for 15 minutes. If you did not request a password reset, please ignore this email.
+
+Best regards,
+ExamSecure Team
+"""
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+        print(f"[FORGOT PASSWORD] Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f"[FORGOT PASSWORD ERROR] Failed to send email to {to_email}: {e}")
+        return False
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+
+    if not email:
+        return jsonify({
+            "success": False,
+            "message": "Registered email address is required"
+        }), 400
+
+    connection = get_connection()
+    try:
+        user_record = None
+        role = "student"
+
+        with connection.cursor() as cursor:
+            # Search student table first
+            cursor.execute("SELECT id, name, email FROM student WHERE email = %s LIMIT 1", (email,))
+            user_record = cursor.fetchone()
+
+            if not user_record:
+                # Search admin table
+                cursor.execute("SELECT id, name, email FROM admin WHERE email = %s LIMIT 1", (email,))
+                user_record = cursor.fetchone()
+                role = "admin"
+
+        if not user_record:
+            return jsonify({
+                "success": False,
+                "message": "No account found registered with this email address."
+            }), 404
+
+        code = str(random.randint(100000, 999999))
+        expires_at = time.time() + 900  # 15 minutes
+
+        RESET_TOKENS[email] = {
+            "code": code,
+            "expires_at": expires_at,
+            "role": role,
+            "user_id": user_record["id"]
+        }
+
+        recipient_name = user_record.get("name", "User")
+        email_sent = send_email_reset_code(email, code, recipient_name)
+
+        resp = {
+            "success": True,
+            "message": f"Verification reset code sent to your registered email ({email})!",
+            "email": email,
+            "email_sent": email_sent
+        }
+
+        if not email_sent:
+            resp["verification_code"] = code
+            resp["message"] += f" (Verification Code: {code})"
+
+        return jsonify(resp), 200
+
+    except Exception as error:
+        print("FORGOT PASSWORD ERROR:", error)
+        return jsonify({
+            "success": False,
+            "message": "Unable to process password reset request",
+            "error": str(error)
+        }), 500
+    finally:
+        connection.close()
+
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    code = data.get("code", "").strip()
+    new_password = data.get("new_password", "")
+
+    if not email or not code or not new_password:
+        return jsonify({
+            "success": False,
+            "message": "Email, verification code, and new password are required"
+        }), 400
+
+    if len(new_password) < 6:
+        return jsonify({
+            "success": False,
+            "message": "Password must be at least 6 characters long"
+        }), 400
+
+    token_info = RESET_TOKENS.get(email)
+
+    if not token_info or time.time() > token_info["expires_at"]:
+        return jsonify({
+            "success": False,
+            "message": "Expired or invalid reset code. Please request a new verification code."
+        }), 400
+
+    if token_info["code"] != code:
+        return jsonify({
+            "success": False,
+            "message": "Invalid verification code. Please check your email and try again."
+        }), 400
+
+    password_hash = hash_password(new_password)
+    role = token_info["role"]
+    connection = get_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            if role == "student":
+                cursor.execute(
+                    "UPDATE student SET password_hash = %s WHERE email = %s",
+                    (password_hash, email)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE admin SET password_hash = %s WHERE email = %s",
+                    (password_hash, email)
+                )
+            connection.commit()
+
+        # Clear reset token
+        RESET_TOKENS.pop(email, None)
+
+        return jsonify({
+            "success": True,
+            "message": "Password reset successfully! You can now log in with your new password."
+        }), 200
+
+    except Exception as error:
+        connection.rollback()
+        print("RESET PASSWORD ERROR:", error)
+        return jsonify({
+            "success": False,
+            "message": "Unable to reset password",
+            "error": str(error)
+        }), 500
+    finally:
+        connection.close()

@@ -4,7 +4,7 @@ import {
   Info, CheckCircle2, ClipboardCheck, Clock3, Shuffle,
   BarChart3, LogOut, ArrowLeft, ArrowRight, Play,
   Timer, AlertTriangle, CircleCheck, MonitorCheck,
-  FileCheck2, GraduationCap, Wifi, EyeOff
+  FileCheck2, GraduationCap, Wifi, EyeOff, Eye
 } from "lucide-react";
 import "./App.css";
 const getApiUrl = () => {
@@ -80,6 +80,115 @@ function App() {
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Show/Hide Password Toggles
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+
+  // Forgot Password Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotStep, setForgotStep] = useState(1); // 1 = Enter Email, 2 = Enter Code & New Password
+  const [forgotMessage, setForgotMessage] = useState("");
+  const [forgotMessageType, setForgotMessageType] = useState("info");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Handlers for Forgot & Reset Password
+  const handleSendForgotCode = async (e) => {
+    if (e) e.preventDefault();
+    if (!forgotEmail || !forgotEmail.trim()) {
+      setForgotMessage("Please enter your registered email address.");
+      setForgotMessageType("error");
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setForgotStep(2);
+        setForgotMessageType("success");
+        setForgotMessage(data.message || "Reset verification code sent to your registered email!");
+      } else {
+        setForgotMessageType("error");
+        setForgotMessage(data.message || "No account found with this email address.");
+      }
+    } catch (err) {
+      console.error("Send forgot code error:", err);
+      setForgotMessageType("error");
+      setForgotMessage("Failed to send reset code. Please check your network connection.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!forgotCode || !forgotNewPassword) {
+      setForgotMessage("Please enter the verification code and your new password.");
+      setForgotMessageType("error");
+      return;
+    }
+    if (forgotNewPassword.length < 6) {
+      setForgotMessage("Password must contain at least 6 characters.");
+      setForgotMessageType("error");
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          code: forgotCode.trim(),
+          new_password: forgotNewPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setForgotMessageType("success");
+        setForgotMessage(data.message || "Password reset successfully! You can now log in.");
+        setTimeout(() => {
+          setShowForgotModal(false);
+          setForgotStep(1);
+          setForgotEmail("");
+          setForgotCode("");
+          setForgotNewPassword("");
+          setForgotMessage("");
+          setMessage("Password reset successfully! Please log in with your new password.");
+        }, 2200);
+      } else {
+        setForgotMessageType("error");
+        setForgotMessage(data.message || "Invalid or expired verification code.");
+      }
+    } catch (err) {
+      console.error("Reset password error:", err);
+      setForgotMessageType("error");
+      setForgotMessage("Unable to reset password. Please try again.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   // Admin Dashboard
   const [adminStats, setAdminStats] = useState({
@@ -1194,13 +1303,13 @@ async function logout() {
                 Password
               </label>
 
-              <div className="input-wrap">
+              <div className="input-wrap password-input-wrap">
 
                 <span className="input-icon"><LockKeyhole size={17} /></span>
 
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) =>
@@ -1209,6 +1318,16 @@ async function logout() {
                   required
                   autoComplete="current-password"
                 />
+
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
 
               </div>
 
@@ -1235,11 +1354,12 @@ async function logout() {
                 <button
                   type="button"
                   className="forgot-button"
-                  onClick={() =>
-                    setMessage(
-                      "Please contact your institution to reset your password."
-                    )
-                  }
+                  onClick={() => {
+                    setForgotEmail(email || "");
+                    setForgotStep(1);
+                    setForgotMessage("");
+                    setShowForgotModal(true);
+                  }}
                 >
                   Forgot password?
                 </button>
@@ -1435,14 +1555,14 @@ async function logout() {
                 Password
               </label>
 
-              <div className="input-wrap">
+              <div className="input-wrap password-input-wrap">
                 <span className="input-icon">
                   <LockKeyhole size={17} />
                 </span>
 
                 <input
                   id="admin-password"
-                  type="password"
+                  type={showAdminPassword ? "text" : "password"}
                   placeholder="Enter admin password"
                   value={adminPassword}
                   onChange={(e) =>
@@ -1451,6 +1571,16 @@ async function logout() {
                   required
                   autoComplete="current-password"
                 />
+
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  title={showAdminPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
 
               {message && (
@@ -2659,13 +2789,13 @@ async function logout() {
                 Password
               </label>
 
-              <div className="input-wrap">
+              <div className="input-wrap password-input-wrap">
 
                 <span className="input-icon"><LockKeyhole size={17} /></span>
 
                 <input
                   id="register-password"
-                  type="password"
+                  type={showRegisterPassword ? "text" : "password"}
                   placeholder="Create a password"
                   value={registerPassword}
                   onChange={(e) =>
@@ -2676,19 +2806,29 @@ async function logout() {
                   autoComplete="new-password"
                 />
 
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                  title={showRegisterPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+
               </div>
 
               <label htmlFor="register-confirm-password">
                 Confirm Password
               </label>
 
-              <div className="input-wrap">
+              <div className="input-wrap password-input-wrap">
 
                 <span className="input-icon"><LockKeyhole size={17} /></span>
 
                 <input
                   id="register-confirm-password"
-                  type="password"
+                  type={showRegisterConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={registerConfirmPassword}
                   onChange={(e) =>
@@ -2700,6 +2840,16 @@ async function logout() {
                   minLength={6}
                   autoComplete="new-password"
                 />
+
+                <button
+                  type="button"
+                  className="toggle-password-btn"
+                  onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)}
+                  title={showRegisterConfirmPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showRegisterConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
 
               </div>
 
@@ -3818,6 +3968,122 @@ async function logout() {
             >
               I Understand & Resume Exam
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* FORGOT PASSWORD MODAL */}
+      {showForgotModal && (
+        <div className="modal-overlay" onClick={() => setShowForgotModal(false)}>
+          <div className="forgot-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="forgot-modal-header">
+              <div>
+                <h2>Reset Password</h2>
+                <p>
+                  {forgotStep === 1
+                    ? "Enter your registered email address to receive a verification reset code."
+                    : `Verification code sent to ${forgotEmail}. Enter code and your new password below.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowForgotModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {forgotMessage && (
+              <div className={`forgot-msg ${forgotMessageType}`}>
+                {forgotMessage}
+              </div>
+            )}
+
+            {forgotStep === 1 ? (
+              <form onSubmit={handleSendForgotCode}>
+                <label htmlFor="forgot-email">Registered Email Address</label>
+                <div className="input-wrap">
+                  <span className="input-icon"><Mail size={17} /></span>
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="Enter your registered email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="login-button"
+                  style={{ marginTop: '20px' }}
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? "Sending Code..." : "Send Verification Code"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit}>
+                <label htmlFor="forgot-code">6-Digit Verification Code</label>
+                <div className="input-wrap" style={{ marginBottom: '16px' }}>
+                  <input
+                    id="forgot-code"
+                    type="text"
+                    className="forgot-code-input"
+                    placeholder="123456"
+                    maxLength={6}
+                    value={forgotCode}
+                    onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, ''))}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <label htmlFor="forgot-new-password">New Password</label>
+                <div className="input-wrap password-input-wrap" style={{ marginBottom: '20px' }}>
+                  <span className="input-icon"><LockKeyhole size={17} /></span>
+                  <input
+                    id="forgot-new-password"
+                    type={showForgotNewPassword ? "text" : "password"}
+                    placeholder="Enter new password (min 6 chars)"
+                    value={forgotNewPassword}
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    className="toggle-password-btn"
+                    onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                    title={showForgotNewPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showForgotNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  className="login-button"
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? "Resetting Password..." : "Reset Password & Login"}
+                </button>
+
+                <div style={{ textAlign: 'center', marginTop: '14px' }}>
+                  <button
+                    type="button"
+                    style={{ background: 'none', border: 'none', color: '#3569d8', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => setForgotStep(1)}
+                  >
+                    ← Change Email / Resend Code
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
