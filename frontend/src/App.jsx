@@ -3387,6 +3387,25 @@ async function logout() {
         data
       );
 
+      if (data.status === "terminated" || data.status === "malpractice" || data.is_malpractice || response.status === 403) {
+        setResult({
+          status: "terminated",
+          is_malpractice: true,
+          result_generated: false,
+          malpractice_reason: data.malpractice_reason || data.message || "Malpractice activity detected during examination",
+          score: 0,
+          percentage: 0,
+          total_questions: questions.length || 30,
+          student_name: user?.name || "Student",
+          student_email: user?.email || "",
+          exam_title: exam?.title || "Aptitude Test",
+          question_set: questionSet || "A"
+        });
+        setPage("result");
+        setSubmitting(false);
+        return;
+      }
+
       if (response.ok && data.success) {
 
         alert(
@@ -3415,12 +3434,6 @@ async function logout() {
         setPage("result");
 
       } else {
-
-        /*
-         * If your backend doesn't currently have
-         * /attempt/submit, don't destroy the user's
-         * current answers.
-         */
 
         setExamMessage(
           data.message ||

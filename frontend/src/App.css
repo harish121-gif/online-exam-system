@@ -1447,6 +1447,13 @@ button {
    EXAM PAGE
 ========================================================= */
 
+.exam-page {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
 .exam-title-mini span,
 .exam-title-mini strong {
   display: block;
