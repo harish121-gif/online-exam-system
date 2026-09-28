@@ -3524,7 +3524,7 @@ async function logout() {
         <div className="exam-actions">
 
           <div className={`proctoring-status-pill ${(tabSwitches + copyAttempts + pasteAttempts) > 0 ? "warning-active" : ""}`}>
-            <ShieldCheck size={14} /> AI Proctoring Active | Violations: {tabSwitches + copyAttempts + pasteAttempts}/3
+            <ShieldCheck size={14} /> Security Proctoring Active | Malpractice Activity: {tabSwitches + copyAttempts + pasteAttempts}
           </div>
 
           <div className="exam-user"><UserRound size={15} /> {user?.name}</div>
