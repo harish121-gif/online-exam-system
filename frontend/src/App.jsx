@@ -122,10 +122,13 @@ function App() {
       if (response.ok && data.success) {
         setForgotStep(2);
         setForgotMessageType("success");
-        setForgotMessage(data.message || "Reset verification code sent to your registered email!");
+        setForgotMessage(data.message || "Reset verification code generated!");
+        if (data.verification_code) {
+          setForgotCode(data.verification_code);
+        }
       } else {
         setForgotMessageType("error");
-        setForgotMessage(data.message || "No account found with this email address.");
+        setForgotMessage(data.message || "No registered account found with this email address.");
       }
     } catch (err) {
       console.error("Send forgot code error:", err);
@@ -167,7 +170,12 @@ function App() {
 
       if (response.ok && data.success) {
         setForgotMessageType("success");
-        setForgotMessage(data.message || "Password reset successfully! You can now log in.");
+        setForgotMessage(data.message || "Password reset successfully! Updating login credentials...");
+        
+        // Auto-fill login credentials for seamless experience
+        setEmail(forgotEmail.trim());
+        setPassword(forgotNewPassword);
+
         setTimeout(() => {
           setShowForgotModal(false);
           setForgotStep(1);
@@ -175,8 +183,8 @@ function App() {
           setForgotCode("");
           setForgotNewPassword("");
           setForgotMessage("");
-          setMessage("Password reset successfully! Please log in with your new password.");
-        }, 2200);
+          setMessage("Password reset successfully! Your new password is now ready. Click Sign In to log in.");
+        }, 1800);
       } else {
         setForgotMessageType("error");
         setForgotMessage(data.message || "Invalid or expired verification code.");
