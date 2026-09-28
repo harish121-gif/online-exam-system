@@ -19,6 +19,11 @@ def create_app():
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
 
+    if not os.path.exists(os.path.join(FRONTEND_DIST, "index.html")):
+        FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist")
+
+    print(f"[STATIC ASSETS] Serving frontend dist from: {FRONTEND_DIST}")
+
     app = Flask(
         __name__,
         static_folder=FRONTEND_DIST,
