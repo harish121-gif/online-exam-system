@@ -479,3 +479,69 @@ def get_attempt(attempt_id):
 
     finally:
         connection.close()
+
+
+# ============================================================
+# CANCEL / DISQUALIFY ATTEMPT (ADMIN ACTION)
+# ============================================================
+
+@admin_bp.route("/attempts/<int:attempt_id>/cancel", methods=["POST"])
+@admin_required
+def cancel_attempt(attempt_id):
+
+    data = request.get_json() or {}
+    reason = data.get("reason", "Disqualified by Administrator due to Malpractice")
+
+    connection = get_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE exam_attempt
+                SET status = 'disqualified',
+                    score = 0,
+                    malpractice_reason = %s
+                WHERE id = %s
+            """, (reason, attempt_id))
+
+            connection.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Examination attempt disqualified successfully",
+            "attempt_id": attempt_id,
+            "status": "disqualified"
+        })
+
+    finally:
+        connection.close()
+
+
+# ============================================================
+# CLEAR MALPRACTICE FLAG (ADMIN ACTION)
+# ============================================================
+
+@admin_bp.route("/attempts/<int:attempt_id>/clear-flag", methods=["POST"])
+@admin_required
+def clear_attempt_flag(attempt_id):
+
+    connection = get_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE exam_attempt
+                SET malpractice_reason = NULL
+                WHERE id = %s
+            """, (attempt_id,))
+
+            connection.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Malpractice flag cleared successfully",
+            "attempt_id": attempt_id
+        })
+
+    finally:
+        connection.close()

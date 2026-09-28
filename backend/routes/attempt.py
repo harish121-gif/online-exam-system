@@ -179,7 +179,7 @@ def submit_attempt(attempt_id):
                 }), 400
 
             # ------------------------------------------------
-            # MALPRACTICE CHECK ON SUBMISSION
+            # MALPRACTICE FLAGGING FOR ADMIN REVIEW
             # ------------------------------------------------
             payload_tab_switches = int(data.get("tab_switches", 0))
             payload_copy_attempts = int(data.get("copy_attempts", 0))
@@ -188,58 +188,14 @@ def submit_attempt(attempt_id):
             total_tab_switches = (attempt.get("tab_switch_count") or 0) + payload_tab_switches
             total_copy_paste = (attempt.get("copy_paste_count") or 0) + payload_copy_attempts + payload_paste_attempts
 
+            malpractice_msg = None
             if total_tab_switches > 0 or total_copy_paste > 0:
                 reasons = []
                 if total_tab_switches > 0:
-                    reasons.append(f"Tab Switching ({total_tab_switches} times detected)")
+                    reasons.append(f"Tab Switching ({total_tab_switches} times)")
                 if total_copy_paste > 0:
-                    reasons.append(f"Copy/Paste Activity ({total_copy_paste} times detected)")
-                
-                malpractice_msg = "Malpractice Detected: " + " & ".join(reasons)
-
-                cursor.execute(
-                    """
-                    UPDATE exam_attempt
-                    SET score = 0,
-                        status = 'terminated',
-                        malpractice_reason = %s,
-                        tab_switch_count = %s,
-                        copy_paste_count = %s,
-                        end_time = NOW()
-                    WHERE id = %s
-                      AND student_id = %s
-                    """,
-                    (
-                        malpractice_msg,
-                        total_tab_switches,
-                        total_copy_paste,
-                        attempt_id,
-                        student_id
-                    )
-                )
-
-                connection.commit()
-
-                return jsonify({
-                    "success": True,
-                    "status": "terminated",
-                    "is_malpractice": True,
-                    "result_generated": False,
-                    "message": "Examination terminated due to malpractice activity",
-                    "malpractice_reason": malpractice_msg,
-                    "attempt_id": attempt_id,
-                    "student_id": student_id,
-                    "student_name": attempt.get("student_name"),
-                    "student_email": attempt.get("student_email"),
-                    "exam_id": attempt.get("exam_id"),
-                    "exam_title": attempt.get("exam_title"),
-                    "question_set": attempt.get("question_set"),
-                    "score": 0,
-                    "percentage": 0,
-                    "total_questions": attempt.get("total_questions", 30),
-                    "tab_switch_count": total_tab_switches,
-                    "copy_paste_count": total_copy_paste
-                })
+                    reasons.append(f"Copy/Paste Activity ({total_copy_paste} times)")
+                malpractice_msg = "Flagged for Admin Review: " + " & ".join(reasons)
 
             # ------------------------------------------------
             # Get correct answers
@@ -310,13 +266,19 @@ def submit_attempt(attempt_id):
                 SET
                     score = %s,
                     end_time = NOW(),
-                    status = %s
+                    status = %s,
+                    tab_switch_count = %s,
+                    copy_paste_count = %s,
+                    malpractice_reason = %s
                 WHERE id = %s
                   AND student_id = %s
                 """,
                 (
                     score,
                     status,
+                    total_tab_switches,
+                    total_copy_paste,
+                    malpractice_msg,
                     attempt_id,
                     student_id
                 )

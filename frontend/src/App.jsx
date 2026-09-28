@@ -909,6 +909,65 @@ async function checkSession() {
     }
   }
 
+  async function cancelAttemptAdmin(attemptId) {
+    if (!window.confirm("Are you sure you want to disqualify this student attempt due to malpractice?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/admin/attempts/${attemptId}/cancel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(user)
+        },
+        credentials: "include",
+        body: JSON.stringify({ reason: "Disqualified by Administrator due to Malpractice Activity" })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setMessage("Attempt disqualified successfully.");
+        setSelectedAttempt(null);
+        await loadAdminAttempts();
+        await loadAdminDashboard();
+      } else {
+        setMessage(data.message || "Failed to disqualify attempt.");
+      }
+    } catch (error) {
+      console.error("DISQUALIFY ATTEMPT ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
+  async function clearAttemptFlagAdmin(attemptId) {
+    try {
+      const response = await fetch(`${API_URL}/admin/attempts/${attemptId}/clear-flag`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(user)
+        },
+        credentials: "include"
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setMessage("Malpractice flag cleared successfully.");
+        if (selectedAttempt) {
+          setSelectedAttempt({ ...selectedAttempt, malpractice_reason: null });
+        }
+        await loadAdminAttempts();
+      } else {
+        setMessage(data.message || "Failed to clear flag.");
+      }
+    } catch (error) {
+      console.error("CLEAR FLAG ERROR:", error);
+      setMessage("Unable to connect to backend.");
+    }
+  }
+
   // =========================================================
   // LOGOUT
   // =========================================================
@@ -2193,6 +2252,35 @@ async function logout() {
                 </strong>
               </div>
 
+              {selectedAttempt.malpractice_reason && (
+                <div style={{ gridColumn: 'span 4', background: '#fee2e2', border: '1px solid #fca5a5', padding: '14px 18px', borderRadius: '12px' }}>
+                  <span style={{ color: '#991b1b', fontWeight: '800' }}>Malpractice Flag</span>
+                  <strong style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>{selectedAttempt.malpractice_reason}</strong>
+                </div>
+              )}
+
+            </div>
+
+            <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              {selectedAttempt.malpractice_reason && (
+                <button
+                  type="button"
+                  style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
+                  onClick={() => clearAttemptFlagAdmin(selectedAttempt.attempt_id)}
+                >
+                  ✓ Clear Flag
+                </button>
+              )}
+
+              {selectedAttempt.status !== 'disqualified' && selectedAttempt.status !== 'terminated' && (
+                <button
+                  type="button"
+                  style={{ background: '#dc2626', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
+                  onClick={() => cancelAttemptAdmin(selectedAttempt.attempt_id)}
+                >
+                  🛑 Disqualify Attempt (Set Score to 0)
+                </button>
+              )}
             </div>
 
           </div>
