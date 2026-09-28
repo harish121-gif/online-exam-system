@@ -292,6 +292,21 @@ def create_app():
     # TEMPORARY ROUTE DEBUG
     # ============================================================
 
+    @app.route("/api/debug-dist")
+    def debug_dist():
+        files = []
+        if FRONTEND_DIST and os.path.exists(FRONTEND_DIST):
+            for root, dirs, filenames in os.walk(FRONTEND_DIST):
+                for f in filenames:
+                    rel = os.path.relpath(os.path.join(root, f), FRONTEND_DIST)
+                    files.append(rel)
+        return jsonify({
+            "success": True,
+            "frontend_dist": FRONTEND_DIST,
+            "exists": os.path.exists(FRONTEND_DIST) if FRONTEND_DIST else False,
+            "files": files
+        })
+
     @app.route("/api/debug-routes")
     def debug_routes():
 
