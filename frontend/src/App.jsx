@@ -342,7 +342,7 @@ function App() {
     }
   };
 
-  // Tab switch listener
+  // Tab switch listener (Only trigger on actual tab hide / window minimize)
   useEffect(() => {
     if (page !== "exam") return;
 
@@ -352,16 +352,10 @@ function App() {
       }
     };
 
-    const handleWindowBlur = () => {
-      handleMalpracticeViolation("tab_switch", "Window lost focus / application switch");
-    };
-
     document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleWindowBlur);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleWindowBlur);
     };
   }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user]);
 
