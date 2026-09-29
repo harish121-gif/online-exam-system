@@ -188,6 +188,7 @@ def submit_attempt(attempt_id):
             total_tab_switches = (attempt.get("tab_switch_count") or 0) + payload_tab_switches
             total_copy_paste = (attempt.get("copy_paste_count") or 0) + payload_copy_attempts + payload_paste_attempts
 
+            malpractice_msg = None
             if total_tab_switches > 0 or total_copy_paste > 0:
                 reasons = []
                 if total_tab_switches > 0:

@@ -165,14 +165,15 @@ def student_required(function):
 
     @wraps(function)
     def decorated_function(*args, **kwargs):
+        user = get_current_user()
 
-        if session.get("user_id") is None:
+        if not user or not user.get("id"):
             return jsonify({
                 "success": False,
                 "message": "Login required."
             }), 401
 
-        if session.get("role") != "student":
+        if user.get("role") != "student":
             return jsonify({
                 "success": False,
                 "message": "Student access required."
@@ -194,14 +195,15 @@ def admin_required(function):
 
     @wraps(function)
     def decorated_function(*args, **kwargs):
+        user = get_current_user()
 
-        if session.get("user_id") is None:
+        if not user or not user.get("id"):
             return jsonify({
                 "success": False,
                 "message": "Login required."
             }), 401
 
-        if session.get("role") != "admin":
+        if user.get("role") != "admin":
             return jsonify({
                 "success": False,
                 "message": "Admin access required."

@@ -656,6 +656,7 @@ async function checkSession() {
     try {
       const response = await fetch(`${API_URL}/admin/dashboard`, {
         method: "GET",
+        headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
 
@@ -683,6 +684,7 @@ async function checkSession() {
   async function loadAdminStudents() {
     try {
       const response = await fetch(`${API_URL}/admin/students`, {
+        headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
 
@@ -715,6 +717,7 @@ async function checkSession() {
           method: isEditing ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
+            ...getAuthHeaders(user),
           },
           credentials: "include",
           body: JSON.stringify(studentForm),
@@ -774,6 +777,7 @@ async function checkSession() {
         `${API_URL}/admin/students/${studentId}`,
         {
           method: "DELETE",
+          headers: { ...getAuthHeaders(user) },
           credentials: "include",
         }
       );
@@ -796,6 +800,7 @@ async function checkSession() {
   async function loadAdminExams() {
     try {
       const response = await fetch(`${API_URL}/exam/`, {
+        headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
 
@@ -828,6 +833,7 @@ async function checkSession() {
           method: isEditing ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
+            ...getAuthHeaders(user),
           },
           credentials: "include",
           body: JSON.stringify(examForm),
@@ -887,6 +893,7 @@ async function checkSession() {
         `${API_URL}/exam/${examId}`,
         {
           method: "DELETE",
+          headers: { ...getAuthHeaders(user) },
           credentials: "include",
         }
       );
@@ -909,6 +916,7 @@ async function checkSession() {
   async function loadAdminAttempts() {
     try {
       const response = await fetch(`${API_URL}/admin/attempts`, {
+        headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
 
@@ -932,6 +940,7 @@ async function checkSession() {
       const response = await fetch(
         `${API_URL}/admin/attempts/${attemptId}`,
         {
+          headers: { ...getAuthHeaders(user) },
           credentials: "include",
         }
       );
