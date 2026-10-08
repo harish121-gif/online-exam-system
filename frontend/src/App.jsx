@@ -659,7 +659,8 @@ function App() {
     setMessage("");
 
     try {
-      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, {
+      const targetExamId = exam?.id || EXAM_ID;
+      const response = await fetch(`${API_URL}/exam/${targetExamId}/start`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -686,18 +687,27 @@ function App() {
         addToast("Examination started. Security monitoring active.", "info");
       } else {
         if (data.is_locked) {
-          setMessage(`🛑 ACCESS DENIED: Account locked from attempting exam for 1 hour due to malpractice disqualification. (Remaining: ~${data.minutes_remaining || 60} mins)`);
+          const lockMsg = `🛑 ACCESS DENIED: Account locked from attempting exam for 1 hour due to malpractice disqualification. (Remaining: ~${data.minutes_remaining || 60} mins)`;
+          setMessage(lockMsg);
+          addToast(`Exam Locked (~${data.minutes_remaining || 60} mins left)`, "error");
+        } else if (response.status === 401) {
+          const errStr = "Student login session expired or required. Please log out and sign in again.";
+          setMessage(errStr);
+          addToast(errStr, "error");
         } else {
           setMessage(data.message || "Unable to start examination.");
+          addToast(data.message || "Unable to start examination.", "error");
         }
       }
     } catch (err) {
       console.error("START EXAM ERROR:", err);
-      setMessage("Cannot connect to backend server.");
+      setMessage("Cannot connect to backend server. Please verify network connection.");
+      addToast("Failed to connect to backend", "error");
     } finally {
       setLoading(false);
     }
   };
+
 
   // Admin Management APIs
   const loadAdminStudents = async () => {

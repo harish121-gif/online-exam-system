@@ -165,8 +165,10 @@ def start_exam(exam_id):
                 FROM exam_attempt
                 WHERE student_id = %s
                   AND exam_id = %s
-                  AND (status IN ('disqualified', 'terminated') OR malpractice_reason IS NOT NULL)
+                  AND status IN ('disqualified', 'terminated')
+                  AND malpractice_reason IS NOT NULL
                   AND end_time >= NOW() - INTERVAL 1 HOUR
+
                 ORDER BY id DESC
                 LIMIT 1
             """, (student_id, exam_id))

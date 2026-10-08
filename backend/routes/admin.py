@@ -531,9 +531,11 @@ def clear_attempt_flag(attempt_id):
         with connection.cursor() as cursor:
             cursor.execute("""
                 UPDATE exam_attempt
-                SET malpractice_reason = NULL
+                SET malpractice_reason = NULL,
+                    status = CASE WHEN status IN ('disqualified', 'terminated') THEN 'submitted' ELSE status END
                 WHERE id = %s
             """, (attempt_id,))
+
 
             connection.commit()
 
