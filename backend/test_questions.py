@@ -31,15 +31,16 @@ if not login_response.ok:
 # GET QUESTIONS
 # ---------------------------------------
 questions_response = session.get(
-    f"{BASE_URL}/api/admin/questions",
-    params={
-        "exam_id": 1
-    }
+    f"{BASE_URL}/api/exam/2/admin/questions"
 )
+
+
+import json
 
 print("\nGET QUESTIONS")
 print("Status:", questions_response.status_code)
-print(questions_response.json())
+print(json.dumps(questions_response.json(), ensure_ascii=True, indent=2)[:500])
+
 
 
 # ---------------------------------------
@@ -58,26 +59,26 @@ question_data = {
 }
 
 create_response = session.post(
-    f"{BASE_URL}/api/admin/questions",
+    f"{BASE_URL}/api/exam/2/admin/questions",
     json=question_data
 )
 
 print("\nCREATE QUESTION")
 print("Status:", create_response.status_code)
-print(create_response.json())
+print(json.dumps(create_response.json(), ensure_ascii=True))
 
 
 # ---------------------------------------
 # GET QUESTIONS AGAIN
 # ---------------------------------------
 questions_response = session.get(
-    f"{BASE_URL}/api/admin/questions",
+    f"{BASE_URL}/api/exam/2/admin/questions",
     params={
-        "exam_id": 1,
-        "question_set": "A"
+        "set": "A"
     }
 )
 
+
 print("\nQUESTIONS - SET A")
 print("Status:", questions_response.status_code)
-print(questions_response.json())
+print(json.dumps(questions_response.json(), ensure_ascii=True)[:500])

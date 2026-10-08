@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   ShieldCheck, Mail, LockKeyhole, UserRound, Phone,
   Info, CheckCircle2, ClipboardCheck, Clock3, Shuffle,
   BarChart3, LogOut, ArrowLeft, ArrowRight, Play,
-  Timer, AlertTriangle, CircleCheck, MonitorCheck,
-  FileCheck2, GraduationCap, Wifi, EyeOff, Eye
+  Timer, AlertTriangle, MonitorCheck,
+  FileCheck2, GraduationCap, Wifi, EyeOff, Eye,
+  Sun, Moon, Search, Plus, Trash2, Edit3, Flag,
+  Download, X, Check
 } from "lucide-react";
 import "./App.css";
+
+// API Base URL Resolution
 const getApiUrl = () => {
   if (
     typeof window !== "undefined" &&
@@ -16,11 +20,7 @@ const getApiUrl = () => {
     return "/api";
   }
   const envUrl = import.meta.env.VITE_API_URL;
-  if (
-    envUrl &&
-    envUrl.trim() !== "" &&
-    envUrl.trim() !== "/api"
-  ) {
+  if (envUrl && envUrl.trim() !== "" && envUrl.trim() !== "/api") {
     return envUrl.trim();
   }
   return "https://online-exam-system-gzy3.onrender.com/api";
@@ -49,156 +49,72 @@ const getAuthHeaders = (currentUser) => {
   return {};
 };
 
-// =========================================================
-// =========================================================
-
-
-// =========================================================
-// MAIN APP
-// =========================================================
-
 function App() {
+  // Theme State (Light / Dark)
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("examsecure_theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("examsecure_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
+
+  // Toast System
+  const [toasts, setToasts] = useState([]);
+  const addToast = (message, type = "info") => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  // User & Page State
   const [user, setUser] = useState(null);
   const [page, setPage] = useState("login");
 
-  // Login
+  // Login Form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Admin Login
+  // Admin Login Form
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
 
-  // Registration
+  // Student Registration Form
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPhone, setRegisterPhone] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
-  const [registerConfirmPassword, setRegisterConfirmPassword] =
-    useState("");
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Show/Hide Password Toggles
+  // Password Visibility Toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
 
-  // Forgot Password Modal State
+  // Forgot Password Modal
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotCode, setForgotCode] = useState("");
   const [forgotNewPassword, setForgotNewPassword] = useState("");
-  const [forgotStep, setForgotStep] = useState(1); // 1 = Enter Email, 2 = Enter Code & New Password
+  const [forgotStep, setForgotStep] = useState(1);
   const [forgotMessage, setForgotMessage] = useState("");
   const [forgotMessageType, setForgotMessageType] = useState("info");
   const [forgotLoading, setForgotLoading] = useState(false);
 
-  // Handlers for Forgot & Reset Password
-  const handleSendForgotCode = async (e) => {
-    if (e) e.preventDefault();
-    if (!forgotEmail || !forgotEmail.trim()) {
-      setForgotMessage("Please enter your registered email address.");
-      setForgotMessageType("error");
-      return;
-    }
-
-    setForgotLoading(true);
-    setForgotMessage("");
-
-    try {
-      const response = await fetch(`${API_URL}/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail.trim() })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setForgotStep(2);
-        setForgotMessageType("success");
-        setForgotMessage(data.message || "Reset verification code generated!");
-        if (data.verification_code) {
-          setForgotCode(data.verification_code);
-        }
-      } else {
-        setForgotMessageType("error");
-        setForgotMessage(data.message || "No registered account found with this email address.");
-      }
-    } catch (err) {
-      console.error("Send forgot code error:", err);
-      setForgotMessageType("error");
-      setForgotMessage("Failed to send reset code. Please check your network connection.");
-    } finally {
-      setForgotLoading(false);
-    }
-  };
-
-  const handleResetPasswordSubmit = async (e) => {
-    if (e) e.preventDefault();
-    if (!forgotCode || !forgotNewPassword) {
-      setForgotMessage("Please enter the verification code and your new password.");
-      setForgotMessageType("error");
-      return;
-    }
-    if (forgotNewPassword.length < 6) {
-      setForgotMessage("Password must contain at least 6 characters.");
-      setForgotMessageType("error");
-      return;
-    }
-
-    setForgotLoading(true);
-    setForgotMessage("");
-
-    try {
-      const response = await fetch(`${API_URL}/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: forgotEmail.trim(),
-          code: forgotCode.trim(),
-          new_password: forgotNewPassword
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setForgotMessageType("success");
-        setForgotMessage(data.message || "Password reset successfully! Updating login credentials...");
-        
-        // Auto-fill login credentials for seamless experience
-        setEmail(forgotEmail.trim());
-        setPassword(forgotNewPassword);
-
-        setTimeout(() => {
-          setShowForgotModal(false);
-          setForgotStep(1);
-          setForgotEmail("");
-          setForgotCode("");
-          setForgotNewPassword("");
-          setForgotMessage("");
-          setMessage("Password reset successfully! Your new password is now ready. Click Sign In to log in.");
-        }, 1800);
-      } else {
-        setForgotMessageType("error");
-        setForgotMessage(data.message || "Invalid or expired verification code.");
-      }
-    } catch (err) {
-      console.error("Reset password error:", err);
-      setForgotMessageType("error");
-      setForgotMessage("Unable to reset password. Please try again.");
-    } finally {
-      setForgotLoading(false);
-    }
-  };
-
-  // Admin Dashboard
+  // Admin Stats & Management State
   const [adminStats, setAdminStats] = useState({
     total_students: 0,
     total_exams: 0,
@@ -207,3370 +123,157 @@ function App() {
     total_violations: 0,
   });
 
-  // Admin Management
   const [adminStudents, setAdminStudents] = useState([]);
   const [adminExams, setAdminExams] = useState([]);
   const [adminAttempts, setAdminAttempts] = useState([]);
   const [selectedAttempt, setSelectedAttempt] = useState(null);
   const [adminFormLoading, setAdminFormLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [studentForm, setStudentForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-  });
-
-  const [examForm, setExamForm] = useState({
-    title: "",
-    total_questions: 30,
-    duration_minutes: 30,
-    is_active: 1,
-  });
-
+  // Student & Exam Management Forms
+  const [studentForm, setStudentForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [examForm, setExamForm] = useState({ title: "", total_questions: 30, duration_minutes: 30, is_active: 1 });
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [editingExamId, setEditingExamId] = useState(null);
 
-  // Exam
+  // Student Exam Engine State
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [questionSet, setQuestionSet] = useState("");
   const [attemptId, setAttemptId] = useState(null);
   const [result, setResult] = useState(null);
 
-  // Examination state
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [flaggedQuestions, setFlaggedQuestions] = useState({});
   const [timeLeft, setTimeLeft] = useState(30 * 60);
   const [tabSwitches, setTabSwitches] = useState(0);
   const [copyAttempts, setCopyAttempts] = useState(0);
   const [pasteAttempts, setPasteAttempts] = useState(0);
-  const [warningModal, setWarningModal] = useState(null);
-  const [isTerminating, setIsTerminating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [examMessage, setExamMessage] = useState("");
+
 
   // =========================================================
-  // INITIAL LOAD
+  // INITIAL SESSION & STORAGE LOAD
   // =========================================================
 
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  // Load admin dashboard statistics
-  useEffect(() => {
-    if (page !== "admin-dashboard") {
-      return;
-    }
-
-    loadAdminDashboard();
-  }, [page]);
-
-  // Load student exam details
-  useEffect(() => {
-    if (page !== "dashboard") {
-      return;
-    }
-
-    loadStudentExamDetails();
-  }, [page]);
-
-  // =========================================================
-  // REMEMBER EMAIL
-  // =========================================================
-
-  useEffect(() => {
-    const savedEmail = localStorage.getItem(
-      "examsecure_remember_email"
-    );
-
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-    }
-  }, []);
-
-  // =========================================================
-  // EXAM TIMER
-  // =========================================================
-
-  useEffect(() => {
-    if (page !== "exam") {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((previous) => {
-        if (previous <= 1) {
-          clearInterval(timer);
-          handleSubmitExam(true);
-          return 0;
-        }
-
-        return previous - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [page]);
-
-  // =========================================================
-  // SILENT MALPRACTICE MONITORING (LOGGED UNTIL SUBMIT)
-  // =========================================================
-
-  const handleMalpracticeViolation = (type, detail) => {
-    if (page !== "exam") return;
-
-    if (type === "tab_switch") {
-      setTabSwitches((prev) => prev + 1);
-    } else if (type === "copy" || type === "shortcut") {
-      setCopyAttempts((prev) => prev + 1);
-    } else if (type === "paste" || type === "cut") {
-      setPasteAttempts((prev) => prev + 1);
-    }
-
-    console.log(`[SILENT MONITORING LOG] Type: ${type} | Detail: ${detail}`);
-
-    if (attemptId) {
-      const endpoint = type === "tab_switch" ? "tab-switch" : "copy-paste";
-      fetch(`${API_URL}/attempt/${attemptId}/${endpoint}`, {
-        method: "POST",
+  const checkSession = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/me`, {
+        method: "GET",
         headers: { ...getAuthHeaders(user) },
-        credentials: "include"
-      }).catch(err => console.error("Log violation error:", err));
-    }
-  };
+        credentials: "include",
+      });
 
-  // Tab switch listener (Only trigger on actual tab hide / window minimize)
-  useEffect(() => {
-    if (page !== "exam") return;
+      const data = await response.json();
 
-    const handleVisibility = () => {
-      if (document.hidden) {
-        handleMalpracticeViolation("tab_switch", "Navigated away from examination tab");
+      if (response.ok && data.success) {
+        setUser(data.user);
+        localStorage.setItem("examsecure_user", JSON.stringify(data.user));
+        if (data.user.role === "student") {
+          setPage("dashboard");
+        }
+      } else {
+        const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+        if (stored && stored.role === "student") {
+          setUser(stored);
+          setPage("dashboard");
+        }
       }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user]);
-
-  // Copy / Paste & Shortcut Prevention
-  useEffect(() => {
-    if (page !== "exam") return;
-
-    const handleCopy = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("copy", "Attempted to copy exam content");
-    };
-
-    const handlePaste = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("paste", "Attempted to paste text into exam");
-    };
-
-    const handleCut = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("cut", "Attempted to cut content");
-    };
-
-    const handleContextMenu = (event) => {
-      event.preventDefault();
-      handleMalpracticeViolation("shortcut", "Right-click context menu attempt");
-    };
-
-    const handleKeyboard = (event) => {
-      const key = event.key.toLowerCase();
-
-      if (
-        (event.ctrlKey && (key === "c" || key === "v" || key === "x" || key === "u")) ||
-        event.key === "F12" ||
-        (event.ctrlKey && event.shiftKey && (key === "i" || key === "j" || key === "c"))
-      ) {
-        event.preventDefault();
-        handleMalpracticeViolation("shortcut", `Prohibited shortcut key pressed (${event.key})`);
-      }
-    };
-
-    document.addEventListener("copy", handleCopy);
-    document.addEventListener("paste", handlePaste);
-    document.addEventListener("cut", handleCut);
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyboard);
-
-    return () => {
-      document.removeEventListener("copy", handleCopy);
-      document.removeEventListener("paste", handlePaste);
-      document.removeEventListener("cut", handleCut);
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyboard);
-    };
-  }, [page, attemptId, tabSwitches, copyAttempts, pasteAttempts, user, submitting, isTerminating]);
-
-  // =========================================================
-  // SESSION CHECK
-  // =========================================================
-
-async function checkSession() {
-  try {
-    const response = await fetch(`${API_URL}/me`, {
-      method: "GET",
-      headers: { ...getAuthHeaders(user) },
-      credentials: "include",
-    });
-
-    const data = await response.json();
-
-    console.log("SESSION RESPONSE:", data);
-
-    if (response.ok && data.success) {
-      setUser(data.user);
-      localStorage.setItem("examsecure_user", JSON.stringify(data.user));
-
-      if (data.user.role === "student") {
-        setPage("dashboard");
-      }
-    } else {
+    } catch (error) {
+      console.error("SESSION CHECK ERROR:", error);
       const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
       if (stored && stored.role === "student") {
         setUser(stored);
         setPage("dashboard");
       }
     }
-  } catch (error) {
-    console.error("SESSION CHECK ERROR:", error);
-    const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
-    if (stored && stored.role === "student") {
-      setUser(stored);
-      setPage("dashboard");
+  }, [user]);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("examsecure_remember_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
     }
-  }
-}
+  }, []);
 
-  // =========================================================
-  // LOGIN
-  // =========================================================
-
-  async function handleLogin(event) {
-    event.preventDefault();
-
-    setMessage("");
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/student/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      console.log("LOGIN RESPONSE:", data);
-
-      if (response.ok && data.success) {
-        setUser(data.user);
-        localStorage.setItem("examsecure_user", JSON.stringify(data.user));
-        setPage("dashboard");
-
-        setPassword("");
-        setMessage("");
-
-        if (rememberMe) {
-          localStorage.setItem(
-            "examsecure_remember_email",
-            data.user.email
-          );
-        } else {
-          localStorage.removeItem(
-            "examsecure_remember_email"
-          );
-        }
-      } else {
-        setMessage(
-          data.message || "Invalid email or password."
-        );
-      }
-    } catch (error) {
-      console.error("LOGIN ERROR:", error);
-
-      setMessage(
-        "Cannot connect to backend. Please check the server."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // =========================================================
-  // ADMIN LOGIN
-  // =========================================================
-
-  async function handleAdminLogin(event) {
-    event.preventDefault();
-
-    setMessage("");
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/admin/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          username: adminUsername.trim(),
-          password: adminPassword,
-        }),
-      });
-
-      const data = await response.json();
-
-      console.log("ADMIN LOGIN RESPONSE:", data);
-
-      if (response.ok && data.success) {
-        setUser(data.user);
-        setPage("admin-dashboard");
-
-        setAdminPassword("");
-        setMessage("");
-      } else {
-        setMessage(
-          data.message || "Invalid admin username or password."
-        );
-      }
-    } catch (error) {
-      console.error("ADMIN LOGIN ERROR:", error);
-
-      setMessage(
-        "Cannot connect to backend. Please check the server."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // =========================================================
-  // REGISTRATION
-  // =========================================================
-
-  async function handleRegister(event) {
-    event.preventDefault();
-
-    setMessage("");
-
-    if (
-      registerPassword !==
-      registerConfirmPassword
-    ) {
-      setMessage("Passwords do not match.");
-      return;
-    }
-
-    if (registerPhone.length !== 10) {
-      setMessage(
-        "Please enter a valid 10-digit phone number."
-      );
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/student/register`, {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          credentials: "include",
-
-          body: JSON.stringify({
-            name: registerName.trim(),
-            email: registerEmail.trim(),
-            phone: registerPhone,
-            password: registerPassword,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      console.log(
-        "REGISTER RESPONSE:",
-        data
-      );
-
-      if (response.ok && data.success) {
-        setMessage(
-          "Registration successful! You can now login."
-        );
-
-        setRegisterName("");
-        setRegisterEmail("");
-        setRegisterPhone("");
-        setRegisterPassword("");
-        setRegisterConfirmPassword("");
-
-        setTimeout(() => {
-          setMessage("");
-          setPage("login");
-        }, 1500);
-      } else {
-        setMessage(
-          data.message ||
-            "Registration failed."
-        );
-      }
-    } catch (error) {
-      console.error(
-        "REGISTER ERROR:",
-        error
-      );
-
-      setMessage(
-        "Cannot connect to backend."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // =========================================================
-  // ADMIN DASHBOARD
-  // =========================================================
-
-  async function loadAdminDashboard() {
+  const loadAdminDashboard = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/admin/dashboard`, {
-        method: "GET",
         headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
-
       const data = await response.json();
-
-      console.log("ADMIN DASHBOARD RESPONSE:", data);
-
       if (response.ok && data.success) {
         setAdminStats(data.statistics);
-      } else {
-        console.error(
-          "ADMIN DASHBOARD ERROR:",
-          data.message || "Unable to load dashboard"
-        );
       }
     } catch (error) {
-      console.error("ADMIN DASHBOARD CONNECTION ERROR:", error);
+      console.error("ADMIN DASHBOARD ERROR:", error);
     }
-  }
+  }, [user]);
 
-  // =========================================================
-  // ADMIN MANAGEMENT
-  // =========================================================
-
-  async function loadAdminStudents() {
-    try {
-      const response = await fetch(`${API_URL}/admin/students`, {
-        headers: { ...getAuthHeaders(user) },
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setAdminStudents(Array.isArray(data.students) ? data.students : []);
-      } else {
-        setMessage(data.message || "Unable to load students.");
-      }
-    } catch (error) {
-      console.error("STUDENT MANAGEMENT ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function saveStudent(event) {
-    event.preventDefault();
-    setAdminFormLoading(true);
-    setMessage("");
-
-    try {
-      const isEditing = Boolean(editingStudentId);
-
-      const response = await fetch(
-        isEditing
-          ? `${API_URL}/admin/students/${editingStudentId}`
-          : `${API_URL}/admin/students`,
-        {
-          method: isEditing ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(user),
-          },
-          credentials: "include",
-          body: JSON.stringify(studentForm),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setStudentForm({
-          name: "",
-          email: "",
-          phone: "",
-          password: "",
-        });
-
-        setEditingStudentId(null);
-        await loadAdminStudents();
-        await loadAdminDashboard();
-
-        setMessage(
-          isEditing
-            ? "Student updated successfully."
-            : "Student added successfully."
-        );
-      } else {
-        setMessage(data.message || "Unable to save student.");
-      }
-    } catch (error) {
-      console.error("SAVE STUDENT ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    } finally {
-      setAdminFormLoading(false);
-    }
-  }
-
-  function editStudent(student) {
-    setEditingStudentId(student.id);
-
-    setStudentForm({
-      name: student.name || "",
-      email: student.email || "",
-      phone: student.phone || "",
-      password: "",
-    });
-
-    setMessage("");
-  }
-
-  async function deleteStudent(studentId) {
-    if (!window.confirm("Are you sure you want to delete this student?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${API_URL}/admin/students/${studentId}`,
-        {
-          method: "DELETE",
-          headers: { ...getAuthHeaders(user) },
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        await loadAdminStudents();
-        await loadAdminDashboard();
-        setMessage("Student deleted successfully.");
-      } else {
-        setMessage(data.message || "Unable to delete student.");
-      }
-    } catch (error) {
-      console.error("DELETE STUDENT ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function loadAdminExams() {
+  const loadStudentExamDetails = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/exam/`, {
         headers: { ...getAuthHeaders(user) },
         credentials: "include",
       });
-
       const data = await response.json();
-
-      if (response.ok && data.success) {
-        setAdminExams(Array.isArray(data.exams) ? data.exams : []);
-      } else {
-        setMessage(data.message || "Unable to load examinations.");
-      }
-    } catch (error) {
-      console.error("EXAM MANAGEMENT ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function saveExam(event) {
-    event.preventDefault();
-    setAdminFormLoading(true);
-    setMessage("");
-
-    try {
-      const isEditing = Boolean(editingExamId);
-
-      const response = await fetch(
-        isEditing
-          ? `${API_URL}/exam/${editingExamId}`
-          : `${API_URL}/exam/`,
-        {
-          method: isEditing ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(user),
-          },
-          credentials: "include",
-          body: JSON.stringify(examForm),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setExamForm({
-          title: "",
-          total_questions: 30,
-          duration_minutes: 30,
-          is_active: 1,
-        });
-
-        setEditingExamId(null);
-        await loadAdminExams();
-        await loadAdminDashboard();
-
-        setMessage(
-          isEditing
-            ? "Examination updated successfully."
-            : "Examination created successfully."
-        );
-      } else {
-        setMessage(data.message || "Unable to save examination.");
-      }
-    } catch (error) {
-      console.error("SAVE EXAM ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    } finally {
-      setAdminFormLoading(false);
-    }
-  }
-
-  function editExam(item) {
-    setEditingExamId(item.id);
-
-    setExamForm({
-      title: item.title || "",
-      total_questions: item.total_questions || 30,
-      duration_minutes: item.duration_minutes || 30,
-      is_active: Number(item.is_active) ? 1 : 0,
-    });
-
-    setMessage("");
-  }
-
-  async function deleteExam(examId) {
-    if (!window.confirm("Are you sure you want to delete this examination?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${API_URL}/exam/${examId}`,
-        {
-          method: "DELETE",
-          headers: { ...getAuthHeaders(user) },
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        await loadAdminExams();
-        await loadAdminDashboard();
-        setMessage("Examination deleted successfully.");
-      } else {
-        setMessage(data.message || "Unable to delete examination.");
-      }
-    } catch (error) {
-      console.error("DELETE EXAM ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function loadAdminAttempts() {
-    try {
-      const response = await fetch(`${API_URL}/admin/attempts`, {
-        headers: { ...getAuthHeaders(user) },
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setAdminAttempts(
-          Array.isArray(data.attempts) ? data.attempts : []
-        );
-      } else {
-        setMessage(data.message || "Unable to load reports.");
-      }
-    } catch (error) {
-      console.error("REPORTS ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function viewAttempt(attemptId) {
-    try {
-      const response = await fetch(
-        `${API_URL}/admin/attempts/${attemptId}`,
-        {
-          headers: { ...getAuthHeaders(user) },
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSelectedAttempt(data.attempt);
-      } else {
-        setMessage(data.message || "Unable to load attempt.");
-      }
-    } catch (error) {
-      console.error("ATTEMPT DETAILS ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function cancelAttemptAdmin(attemptId) {
-    if (!window.confirm("Are you sure you want to disqualify this student attempt due to malpractice?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/admin/attempts/${attemptId}/cancel`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(user)
-        },
-        credentials: "include",
-        body: JSON.stringify({ reason: "Disqualified by Administrator due to Malpractice Activity" })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setMessage("Attempt disqualified successfully.");
-        setSelectedAttempt(null);
-        await loadAdminAttempts();
-        await loadAdminDashboard();
-      } else {
-        setMessage(data.message || "Failed to disqualify attempt.");
-      }
-    } catch (error) {
-      console.error("DISQUALIFY ATTEMPT ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  async function clearAttemptFlagAdmin(attemptId) {
-    try {
-      const response = await fetch(`${API_URL}/admin/attempts/${attemptId}/clear-flag`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(user)
-        },
-        credentials: "include"
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setMessage("Malpractice flag cleared successfully.");
-        if (selectedAttempt) {
-          setSelectedAttempt({ ...selectedAttempt, malpractice_reason: null });
-        }
-        await loadAdminAttempts();
-      } else {
-        setMessage(data.message || "Failed to clear flag.");
-      }
-    } catch (error) {
-      console.error("CLEAR FLAG ERROR:", error);
-      setMessage("Unable to connect to backend.");
-    }
-  }
-
-  // =========================================================
-  // LOGOUT
-  // =========================================================
-
-async function logout() {
-  try {
-    await fetch(`${API_URL}/logout`, {
-      method: "POST",
-      headers: { ...getAuthHeaders(user) },
-      credentials: "include",
-    });
-  } catch (error) {
-    console.error("LOGOUT ERROR:", error);
-  }
-
-  localStorage.removeItem("examsecure_user");
-  setUser(null);
-  setPage("login");
-
-  setExam(null);
-  setQuestions([]);
-  setQuestionSet("");
-  setAttemptId(null);
-  setMessage("");
-}
-  async function loadStudentExamDetails() {
-    try {
-      const response = await fetch(`${API_URL}/exam/`, {
-        method: "GET",
-        headers: { ...getAuthHeaders(user) },
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
       if (response.ok && data.success && Array.isArray(data.exams)) {
         const activeExam = data.exams.find(
           (e) => String(e.id) === String(EXAM_ID) || Boolean(e.is_active)
         );
-
         if (activeExam) {
           setExam(activeExam);
         }
       }
     } catch (error) {
-      console.error("LOAD STUDENT EXAM DETAILS ERROR:", error);
+      console.error("LOAD STUDENT EXAM ERROR:", error);
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (page === "admin-dashboard") loadAdminDashboard();
+    if (page === "dashboard") loadStudentExamDetails();
+  }, [page, loadAdminDashboard, loadStudentExamDetails]);
 
   // =========================================================
-  // START EXAM
+  // SUBMIT EXAM FUNCTION
   // =========================================================
 
-  async function startExam() {
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(user),
-        },
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      console.log(
-        "START EXAM RESPONSE:",
-        data
-      );
-
-      if (response.ok && data.success) {
-        setExam(data.exam);
-        setQuestions(
-          Array.isArray(data.questions)
-            ? data.questions
-            : []
-        );
-
-        setQuestionSet(
-          data.question_set || ""
-        );
-
-        setAttemptId(
-          data.attempt_id || null
-        );
-
-        setTabSwitches(0);
-        setCopyAttempts(0);
-        setPasteAttempts(0);
-
-        setPage("exam");
-      } else {
-        if (data.is_locked) {
-          setMessage(`🛑 ACCESS DENIED: Your account is locked from attempting exams for 1 hour due to a malpractice disqualification. (Time remaining: ~${data.minutes_remaining || 60} mins)`);
-        } else {
-          setMessage(
-            data.message ||
-              "Unable to start examination."
-          );
-        }
-      }
-    } catch (error) {
-      console.error(
-        "START EXAM ERROR:",
-        error
-      );
-
-      setMessage(
-        "Cannot connect to backend."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // =========================================================
-  // LOGIN PAGE
-  // =========================================================
-
-  if (page === "login") {
-    return (
-      <div className="login-page">
-
-        {/* LEFT SIDE */}
-
-        <section className="login-showcase">
-
-          <div className="showcase-overlay"></div>
-
-          <div className="showcase-content">
-
-            <div className="brand">
-
-              <div className="brand-mark">
-                <span>ES</span>
-              </div>
-
-              <div>
-                <strong>
-                  Exam<span>Secure</span>
-                </strong>
-
-                <small>
-                  AI-Based Online Examination Monitoring
-                </small>
-              </div>
-
-            </div>
-
-            <div className="showcase-main">
-
-              <div className="eyebrow">
-                SMART EXAMINATION PLATFORM
-              </div>
-
-              <h1>
-                Secure Exams.
-                <br />
-                Trusted <span>Integrity.</span>
-                <br />
-                Better Learning.
-              </h1>
-
-              <div className="showcase-line"></div>
-
-              <p>
-                Advanced AI monitoring helps create
-                a fair, transparent and secure
-                examination experience for every student.
-              </p>
-
-              <div className="exam-scene">
-
-                <div className="scene-glow"></div>
-
-                <div className="laptop">
-
-                  <div className="laptop-screen">
-
-                    <div className="screen-top">
-                      ONLINE EXAM
-                    </div>
-
-                    <div className="screen-row wide"></div>
-
-                    <div className="screen-row"></div>
-
-                    <div className="screen-row"></div>
-
-                    <div className="screen-button">
-                      START
-                    </div>
-
-                  </div>
-
-                  <div className="laptop-base"></div>
-
-                </div>
-
-                <div className="scene-book book-one"></div>
-
-                <div className="scene-book book-two"></div>
-
-                <div className="scene-plant">
-
-                  <span></span>
-                  <span></span>
-                  <span></span>
-
-                  <div></div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="feature-strip">
-
-              <Feature
-                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
-                title="Secure"
-                text="Environment"
-              />
-
-              <Feature
-                icon={<MonitorCheck size={17} strokeWidth={2.4} />}
-                title="AI-Powered"
-                text="Monitoring"
-              />
-
-              <Feature
-                icon={<BarChart3 size={17} strokeWidth={2.4} />}
-                title="Real-time"
-                text="Analytics"
-              />
-
-              <Feature
-                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
-                title="Data"
-                text="Privacy"
-              />
-
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* RIGHT SIDE */}
-
-        <section className="login-panel">
-
-          <div className="login-card">
-
-            <div className="login-cap"><ShieldCheck size={26} strokeWidth={2.2} /></div>
-
-            <h2>
-              Welcome Back!
-            </h2>
-
-            <p className="login-subtitle">
-              Sign in to continue to your student portal
-            </p>
-
-            <form onSubmit={handleLogin}>
-
-              <label htmlFor="email">
-                Email Address
-              </label>
-
-              <div className="input-wrap">
-
-                <span className="input-icon"><Mail size={17} /></span>
-
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="student1@exam.com"
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                  required
-                  autoComplete="email"
-                />
-
-              </div>
-
-              <label htmlFor="password">
-                Password
-              </label>
-
-              <div className="input-wrap password-input-wrap">
-
-                <span className="input-icon"><LockKeyhole size={17} /></span>
-
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  required
-                  autoComplete="current-password"
-                />
-
-                <button
-                  type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-
-              </div>
-
-              <div className="login-options">
-
-                <label className="remember">
-
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) =>
-                      setRememberMe(
-                        e.target.checked
-                      )
-                    }
-                  />
-
-                  <span>
-                    Remember me
-                  </span>
-
-                </label>
-
-                <button
-                  type="button"
-                  className="forgot-button"
-                  onClick={() => {
-                    setForgotEmail(email || "");
-                    setForgotStep(1);
-                    setForgotMessage("");
-                    setShowForgotModal(true);
-                  }}
-                >
-                  Forgot password?
-                </button>
-
-              </div>
-
-              {message && (
-                <div className="error-message">
-                  {message}
-                </div>
-              )}
-
-              <button
-                className="login-button"
-                type="submit"
-                disabled={loading}
-              >
-                {loading
-                  ? "Signing in..."
-                  : "Student Login"}
-              </button>
-
-            </form>
-
-            <div className="or-divider">
-
-              <span></span>
-
-              <b>OR</b>
-
-              <span></span>
-
-            </div>
-
-            <button
-              type="button"
-              className="register-button"
-              onClick={() => {
-                setMessage("");
-                setPage("register");
-              }}
-            >
-              Create an Account
-            </button>
-
-            <div className="or-divider">
-              <span></span>
-              <b>OR</b>
-              <span></span>
-            </div>
-
-            <button
-              type="button"
-              className="register-button"
-              onClick={() => {
-                setMessage("");
-                setAdminUsername("");
-                setAdminPassword("");
-                setPage("admin-login");
-              }}
-            >
-              Admin Login
-            </button>
-
-            <div className="credential-note">
-
-              <div className="note-icon"><Info size={17} /></div>
-
-              <p>
-                Use your registered student credentials
-                provided by your institution.
-              </p>
-
-            </div>
-
-            <div className="privacy-note">
-
-              <ShieldCheck size={15} />
-
-              Your privacy and security are our priority.
-
-            </div>
-
-          </div>
-
-          <div className="copyright">
-            © 2026 ExamSecure. All rights reserved.
-          </div>
-
-        </section>
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // ADMIN LOGIN PAGE
-  // =========================================================
-
-  if (page === "admin-login") {
-    return (
-      <div className="login-page">
-
-        {/* LEFT SIDE */}
-        <section className="login-showcase">
-          <div className="showcase-overlay"></div>
-
-          <div className="showcase-content">
-
-            <div className="brand">
-              <div className="brand-mark">
-                <span>ES</span>
-              </div>
-
-              <div>
-                <strong>
-                  Exam<span>Secure</span>
-                </strong>
-
-                <small>
-                  Intelligent Examination Platform
-                </small>
-              </div>
-            </div>
-
-            <div className="showcase-copy">
-
-              <div className="eyebrow">
-                ADMINISTRATION PORTAL
-              </div>
-
-              <h1>
-                Manage examinations
-                <br />
-                with confidence.
-              </h1>
-
-              <div className="showcase-line"></div>
-
-              <p>
-                Secure administration access for managing
-                students, examinations, questions and
-                examination attempts.
-              </p>
-
-            </div>
-
-          </div>
-        </section>
-
-        {/* RIGHT SIDE */}
-        <section className="login-panel">
-
-          <div className="login-card">
-
-            <div className="login-cap">
-              <ShieldCheck size={26} strokeWidth={2.2} />
-            </div>
-
-            <h2>
-              Admin Login
-            </h2>
-
-            <p className="login-subtitle">
-              Sign in to access the administration portal
-            </p>
-
-            <form onSubmit={handleAdminLogin}>
-
-              <label htmlFor="admin-username">
-                Username
-              </label>
-
-              <div className="input-wrap">
-                <span className="input-icon">
-                  <UserRound size={17} />
-                </span>
-
-                <input
-                  id="admin-username"
-                  type="text"
-                  placeholder="Enter admin username"
-                  value={adminUsername}
-                  onChange={(e) =>
-                    setAdminUsername(e.target.value)
-                  }
-                  required
-                  autoComplete="username"
-                />
-              </div>
-
-              <label htmlFor="admin-password">
-                Password
-              </label>
-
-              <div className="input-wrap password-input-wrap">
-                <span className="input-icon">
-                  <LockKeyhole size={17} />
-                </span>
-
-                <input
-                  id="admin-password"
-                  type={showAdminPassword ? "text" : "password"}
-                  placeholder="Enter admin password"
-                  value={adminPassword}
-                  onChange={(e) =>
-                    setAdminPassword(e.target.value)
-                  }
-                  required
-                  autoComplete="current-password"
-                />
-
-                <button
-                  type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowAdminPassword(!showAdminPassword)}
-                  title={showAdminPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-
-              {message && (
-                <div className="error-message">
-                  {message}
-                </div>
-              )}
-
-              <button
-                className="login-button"
-                type="submit"
-                disabled={loading}
-              >
-                {loading
-                  ? "Signing in..."
-                  : "Sign In as Admin"}
-              </button>
-
-            </form>
-
-            <div className="or-divider">
-              <span></span>
-              <b>OR</b>
-              <span></span>
-            </div>
-
-            <button
-              type="button"
-              className="register-button"
-              onClick={() => {
-                setMessage("");
-                setPage("login");
-              }}
-            >
-              Back to Student Login
-            </button>
-
-            <div className="credential-note">
-
-              <div className="note-icon">
-                <Info size={17} />
-              </div>
-
-              <p>
-                Use your authorized administrator credentials
-                to access the management portal.
-              </p>
-
-            </div>
-
-            <div className="privacy-note">
-              <ShieldCheck size={15} />
-              Your privacy and security are our priority.
-            </div>
-
-          </div>
-
-        </section>
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // ADMIN STUDENT MANAGEMENT
-  // =========================================================
-
-  if (page === "admin-students") {
-    return (
-      <div className="dashboard-page admin-management-page">
-
-        <div className="dashboard-header">
-          <div>
-            <div className="portal-label">ADMIN PORTAL</div>
-            <h1>Student Management</h1>
-            <p className="dashboard-intro">
-              View, add, edit and manage registered students.
-            </p>
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={() => setPage("admin-dashboard")}
-          >
-            <ArrowLeft size={17} />
-            Back to Dashboard
-          </button>
-        </div>
-
-        <div className="admin-management-card">
-
-          <div className="admin-management-title">
-            <div>
-              <h2>
-                {editingStudentId
-                  ? "Edit Student"
-                  : "Add New Student"}
-              </h2>
-              <p>
-                Manage student account information.
-              </p>
-            </div>
-          </div>
-
-          <form
-            className="admin-management-form"
-            onSubmit={saveStudent}
-          >
-            <input
-              type="text"
-              placeholder="Student name"
-              value={studentForm.name}
-              onChange={(e) =>
-                setStudentForm({
-                  ...studentForm,
-                  name: e.target.value,
-                })
-              }
-              required
-            />
-
-            <input
-              type="email"
-              placeholder="Student email"
-              value={studentForm.email}
-              onChange={(e) =>
-                setStudentForm({
-                  ...studentForm,
-                  email: e.target.value,
-                })
-              }
-              required
-            />
-
-            <input
-              type="tel"
-              placeholder="Phone number"
-              value={studentForm.phone}
-              onChange={(e) =>
-                setStudentForm({
-                  ...studentForm,
-                  phone: e.target.value,
-                })
-              }
-            />
-
-            {!editingStudentId && (
-              <input
-                type="password"
-                placeholder="Temporary password"
-                value={studentForm.password}
-                onChange={(e) =>
-                  setStudentForm({
-                    ...studentForm,
-                    password: e.target.value,
-                  })
-                }
-                required
-              />
-            )}
-
-            <button
-              className="admin-primary-button"
-              type="submit"
-              disabled={adminFormLoading}
-            >
-              {adminFormLoading
-                ? "Saving..."
-                : editingStudentId
-                ? "Update Student"
-                : "Add Student"}
-            </button>
-
-            {editingStudentId && (
-              <button
-                className="admin-secondary-button"
-                type="button"
-                onClick={() => {
-                  setEditingStudentId(null);
-                  setStudentForm({
-                    name: "",
-                    email: "",
-                    phone: "",
-                    password: "",
-                  });
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </form>
-
-        </div>
-
-        <div className="admin-table-card">
-
-          <div className="admin-table-heading">
-            <h2>Registered Students</h2>
-            <span>{adminStudents.length} students</span>
-          </div>
-
-          <div className="admin-table-wrap">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Registered</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {adminStudents.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="admin-empty">
-                      No students registered yet.
-                    </td>
-                  </tr>
-                ) : (
-                  adminStudents.map((student) => (
-                    <tr key={student.id}>
-                      <td>#{student.id}</td>
-                      <td>{student.name}</td>
-                      <td>{student.email}</td>
-                      <td>{student.phone || "?"}</td>
-                      <td>
-                        {student.created_at
-                          ? new Date(
-                              student.created_at
-                            ).toLocaleDateString()
-                          : "?"}
-                      </td>
-                      <td>
-                        <div className="admin-row-actions">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              editStudent(student)
-                            }
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() =>
-                              deleteStudent(student.id)
-                            }
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {message && (
-          <div className="admin-message">
-            {message}
-          </div>
-        )}
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // ADMIN EXAM MANAGEMENT
-  // =========================================================
-
-  if (page === "admin-exams") {
-    return (
-      <div className="dashboard-page admin-management-page">
-
-        <div className="dashboard-header">
-          <div>
-            <div className="portal-label">ADMIN PORTAL</div>
-            <h1>Exam Management</h1>
-            <p className="dashboard-intro">
-              Create, update and manage examinations.
-            </p>
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={() => setPage("admin-dashboard")}
-          >
-            <ArrowLeft size={17} />
-            Back to Dashboard
-          </button>
-        </div>
-
-        <div className="admin-management-card">
-
-          <div className="admin-management-title">
-            <div>
-              <h2>
-                {editingExamId
-                  ? "Edit Examination"
-                  : "Create Examination"}
-              </h2>
-              <p>
-                Configure examination title, questions,
-                duration and availability.
-              </p>
-            </div>
-          </div>
-
-          <form
-            className="admin-management-form exam-form"
-            onSubmit={saveExam}
-          >
-            <input
-              type="text"
-              placeholder="Examination title"
-              value={examForm.title}
-              onChange={(e) =>
-                setExamForm({
-                  ...examForm,
-                  title: e.target.value,
-                })
-              }
-              required
-            />
-
-            <input
-              type="number"
-              min="1"
-              placeholder="Total questions"
-              value={examForm.total_questions}
-              onChange={(e) =>
-                setExamForm({
-                  ...examForm,
-                  total_questions: e.target.value,
-                })
-              }
-              required
-            />
-
-            <input
-              type="number"
-              min="1"
-              placeholder="Duration in minutes"
-              value={examForm.duration_minutes}
-              onChange={(e) =>
-                setExamForm({
-                  ...examForm,
-                  duration_minutes: e.target.value,
-                })
-              }
-              required
-            />
-
-            <select
-              value={examForm.is_active}
-              onChange={(e) =>
-                setExamForm({
-                  ...examForm,
-                  is_active: Number(e.target.value),
-                })
-              }
-            >
-              <option value={1}>Active</option>
-              <option value={0}>Inactive</option>
-            </select>
-
-            <button
-              className="admin-primary-button"
-              type="submit"
-              disabled={adminFormLoading}
-            >
-              {adminFormLoading
-                ? "Saving..."
-                : editingExamId
-                ? "Update Examination"
-                : "Create Examination"}
-            </button>
-
-            {editingExamId && (
-              <button
-                className="admin-secondary-button"
-                type="button"
-                onClick={() => {
-                  setEditingExamId(null);
-                  setExamForm({
-                    title: "",
-                    total_questions: 30,
-                    duration_minutes: 30,
-                    is_active: 1,
-                  });
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </form>
-
-        </div>
-
-        <div className="admin-table-card">
-
-          <div className="admin-table-heading">
-            <h2>Examinations</h2>
-            <span>{adminExams.length} exams</span>
-          </div>
-
-          <div className="admin-table-wrap">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Examination</th>
-                  <th>Questions</th>
-                  <th>Duration</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {adminExams.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="admin-empty">
-                      No examinations created yet.
-                    </td>
-                  </tr>
-                ) : (
-                  adminExams.map((item) => (
-                    <tr key={item.id}>
-                      <td>#{item.id}</td>
-                      <td>
-                        <strong>{item.title}</strong>
-                      </td>
-                      <td>{item.total_questions}</td>
-                      <td>{item.duration_minutes} min</td>
-                      <td>
-                        <span
-                          className={
-                            Number(item.is_active)
-                              ? "status-badge active"
-                              : "status-badge inactive"
-                          }
-                        >
-                          {Number(item.is_active)
-                            ? "Active"
-                            : "Inactive"}
-                        </span>
-                      </td>
-                      <td>
-                        {item.created_at
-                          ? new Date(
-                              item.created_at
-                            ).toLocaleDateString()
-                          : "?"}
-                      </td>
-                      <td>
-                        <div className="admin-row-actions">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              editExam(item)
-                            }
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() =>
-                              deleteExam(item.id)
-                            }
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-        </div>
-
-        {message && (
-          <div className="admin-message">
-            {message}
-          </div>
-        )}
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // ADMIN ATTEMPT REPORTS
-  // =========================================================
-
-  if (page === "admin-reports") {
-    return (
-      <div className="dashboard-page admin-management-page">
-
-        <div className="dashboard-header">
-          <div>
-            <div className="portal-label">ADMIN PORTAL</div>
-            <h1>Attempt Reports</h1>
-            <p className="dashboard-intro">
-              Review student attempts, scores and examination results.
-            </p>
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={() => setPage("admin-dashboard")}
-          >
-            <ArrowLeft size={17} />
-            Back to Dashboard
-          </button>
-        </div>
-
-        <div className="admin-table-card">
-
-          <div className="admin-table-heading">
-            <h2>Examination Attempts</h2>
-            <span>{adminAttempts.length} attempts</span>
-          </div>
-
-          <div className="admin-table-wrap">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Attempt</th>
-                  <th>Student</th>
-                  <th>Examination</th>
-                  <th>Set</th>
-                  <th>Score</th>
-                  <th>Percentage</th>
-                  <th>Tab Switches</th>
-                  <th>Copy / Paste</th>
-                  <th>Status</th>
-                  <th>Started</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {adminAttempts.length === 0 ? (
-                  <tr>
-                    <td colSpan="11" className="admin-empty">
-                      No examination attempts found.
-                    </td>
-                  </tr>
-                ) : (
-                  adminAttempts.map((attempt) => (
-                    <tr key={attempt.attempt_id}>
-                      <td>#{attempt.attempt_id}</td>
-                      <td>
-                        <strong>{attempt.student_name}</strong>
-                        <small className="table-subtext">
-                          {attempt.student_email}
-                        </small>
-                      </td>
-                      <td>{attempt.exam_title}</td>
-                      <td>
-                        <span className="set-badge">
-                          {attempt.question_set || "?"}
-                        </span>
-                      </td>
-                      <td>
-                        {attempt.score ?? 0}/
-                        {attempt.total_questions ?? 0}
-                      </td>
-                      <td>
-                        {Number(
-                          attempt.percentage || 0
-                        ).toFixed(2)}%
-                      </td>
-                      <td>
-                        {(attempt.tab_switch_count || 0) > 0 ? (
-                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
-                            ⚠️ {attempt.tab_switch_count} switch{(attempt.tab_switch_count || 0) > 1 ? "es" : ""}
-                          </span>
-                        ) : (
-                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
-                            ✓ 0 Clean
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {(attempt.copy_paste_count || 0) > 0 ? (
-                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
-                            ⚠️ {attempt.copy_paste_count} copy/paste
-                          </span>
-                        ) : (
-                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
-                            ✓ 0 Clean
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            attempt.status === "submitted" || attempt.status === "completed"
-                              ? "status-badge active"
-                              : "status-badge inactive"
-                          }
-                        >
-                          {attempt.status || "Unknown"}
-                        </span>
-                      </td>
-                      <td>
-                        {attempt.start_time
-                          ? new Date(
-                              attempt.start_time
-                            ).toLocaleString()
-                          : "?"}
-                      </td>
-                      <td>
-                        <button
-                          className="report-view-button"
-                          type="button"
-                          onClick={() =>
-                            viewAttempt(
-                              attempt.attempt_id
-                            )
-                          }
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-        </div>
-
-        {selectedAttempt && (
-          <div className="attempt-detail-card">
-
-            <div className="admin-table-heading">
-              <div>
-                <h2>Attempt Details</h2>
-                <p>
-                  Attempt #{selectedAttempt.attempt_id}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="admin-secondary-button"
-                onClick={() =>
-                  setSelectedAttempt(null)
-                }
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="attempt-detail-grid">
-
-              <div>
-                <span>Student</span>
-                <strong>
-                  {selectedAttempt.student_name}
-                </strong>
-              </div>
-
-              <div>
-                <span>Email</span>
-                <strong>
-                  {selectedAttempt.student_email}
-                </strong>
-              </div>
-
-              <div>
-                <span>Examination</span>
-                <strong>
-                  {selectedAttempt.exam_title}
-                </strong>
-              </div>
-
-              <div>
-                <span>Question Set</span>
-                <strong>
-                  {selectedAttempt.question_set}
-                </strong>
-              </div>
-
-              <div>
-                <span>Score</span>
-                <strong>
-                  {selectedAttempt.score ?? 0}/
-                  {selectedAttempt.total_questions ?? 0}
-                </strong>
-              </div>
-
-              <div>
-                <span>Percentage</span>
-                <strong>
-                  {Number(
-                    selectedAttempt.percentage || 0
-                  ).toFixed(2)}%
-                </strong>
-              </div>
-
-              <div>
-                <span>Status</span>
-                <strong>
-                  {selectedAttempt.status}
-                </strong>
-              </div>
-
-              <div>
-                <span>Duration</span>
-                <strong>
-                  {selectedAttempt.duration_minutes || 0} minutes
-                </strong>
-              </div>
-
-              {selectedAttempt.malpractice_reason && (
-                <div style={{ gridColumn: 'span 4', background: '#fee2e2', border: '1px solid #fca5a5', padding: '14px 18px', borderRadius: '12px' }}>
-                  <span style={{ color: '#991b1b', fontWeight: '800' }}>Malpractice Flag</span>
-                  <strong style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>{selectedAttempt.malpractice_reason}</strong>
-                </div>
-              )}
-
-            </div>
-
-            <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              {selectedAttempt.malpractice_reason && (
-                <button
-                  type="button"
-                  style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => clearAttemptFlagAdmin(selectedAttempt.attempt_id)}
-                >
-                  ✓ Clear Flag
-                </button>
-              )}
-
-              {selectedAttempt.status !== 'disqualified' && selectedAttempt.status !== 'terminated' && (
-                <button
-                  type="button"
-                  style={{ background: '#dc2626', color: '#ffffff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => cancelAttemptAdmin(selectedAttempt.attempt_id)}
-                >
-                  🛑 Disqualify Attempt (Set Score to 0)
-                </button>
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {message && (
-          <div className="admin-message">
-            {message}
-          </div>
-        )}
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // ADMIN DASHBOARD PAGE
-  // =========================================================
-
-  if (page === "admin-dashboard") {
-
-    return (
-      <div className="dashboard-page">
-
-        <div className="dashboard-header">
-
-          <div>
-            <div className="portal-label">
-              ADMIN PORTAL
-            </div>
-
-            <h1>
-              Welcome, {user?.name || "Administrator"}!
-            </h1>
-
-            <p className="dashboard-intro">
-              Manage students, examinations and examination attempts.
-            </p>
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={logout}
-          >
-            <LogOut size={17} />
-            Logout
-          </button>
-
-        </div>
-
-        <div className="admin-stat-grid">
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">
-              <GraduationCap size={24} />
-            </div>
-
-            <div>
-              <span>Total Students</span>
-              <strong>{adminStats.total_students}</strong>
-            </div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">
-              <ClipboardCheck size={24} />
-            </div>
-
-            <div>
-              <span>Total Exams</span>
-              <strong>{adminStats.total_exams}</strong>
-            </div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">
-              <MonitorCheck size={24} />
-            </div>
-
-            <div>
-              <span>Active Exams</span>
-              <strong>{adminStats.active_exams}</strong>
-            </div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon">
-              <BarChart3 size={24} />
-            </div>
-
-            <div>
-              <span>Total Attempts</span>
-              <strong>{adminStats.total_attempts}</strong>
-            </div>
-          </div>
-
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>
-              <AlertTriangle size={24} />
-            </div>
-
-            <div>
-              <span>Malpractice Alerts</span>
-              <strong style={{ color: adminStats.total_violations > 0 ? '#dc2626' : 'inherit' }}>
-                {adminStats.total_violations || 0}
-              </strong>
-            </div>
-          </div>
-
-        </div>
-
-        <div className="admin-section">
-
-          <h2>Administration</h2>
-
-          <div className="admin-action-grid">
-
-            <div className="admin-action-card">
-              <GraduationCap size={28} />
-
-              <h3>Student Management</h3>
-
-              <p>
-                View, add, edit and manage registered students.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMessage("");
-                  setPage("admin-students");
-                  loadAdminStudents();
-                }}
-              >
-                Manage Students
-              </button>
-            </div>
-
-            <div className="admin-action-card">
-              <ClipboardCheck size={28} />
-
-              <h3>Exam Management</h3>
-
-              <p>
-                Create, update and manage examinations.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMessage("");
-                  setPage("admin-exams");
-                  loadAdminExams();
-                }}
-              >
-                Manage Exams
-              </button>
-            </div>
-
-            <div className="admin-action-card">
-              <BarChart3 size={28} />
-
-              <h3>Attempt Reports</h3>
-
-              <p>
-                Review student attempts, scores and examination results.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMessage("");
-                  setSelectedAttempt(null);
-                  setPage("admin-reports");
-                  loadAdminAttempts();
-                }}
-              >
-                View Reports
-              </button>
-            </div>
-
-            <div className="admin-action-card" style={{ borderColor: '#fca5a5', background: 'linear-gradient(to bottom, #ffffff, #fff5f5)' }}>
-              <div style={{ color: '#dc2626' }}>
-                <AlertTriangle size={28} />
-              </div>
-
-              <h3>Malpractice Monitor</h3>
-
-              <p>
-                Track student tab switching, window blur events, copy-paste violations and malpractice alerts.
-              </p>
-
-              <button
-                type="button"
-                style={{ backgroundColor: '#dc2626' }}
-                onClick={() => {
-                  setMessage("");
-                  setSelectedAttempt(null);
-                  setPage("admin-reports");
-                  loadAdminAttempts();
-                }}
-              >
-                Monitor Malpractice
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-
-        {message && (
-          <div className="admin-message">
-            {message}
-          </div>
-        )}
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // REGISTRATION PAGE
-  // =========================================================
-
-  if (page === "register") {
-    return (
-      <div className="login-page">
-
-        {/* LEFT SIDE */}
-
-        <section className="login-showcase">
-
-          <div className="showcase-overlay"></div>
-
-          <div className="showcase-content">
-
-            <div className="brand">
-
-              <div className="brand-mark">
-                <span>ES</span>
-              </div>
-
-              <div>
-                <strong>
-                  Exam<span>Secure</span>
-                </strong>
-
-                <small>
-                  AI-Based Online Examination Monitoring
-                </small>
-              </div>
-
-            </div>
-
-            <div className="showcase-main">
-
-              <div className="eyebrow">
-                JOIN EXAMSECURE
-              </div>
-
-              <h1>
-                Create Your
-                <br />
-                Student <span>Account.</span>
-              </h1>
-
-              <div className="showcase-line"></div>
-
-              <p>
-                Register securely and access your
-                online examinations through our
-                intelligent examination platform.
-              </p>
-
-              <div className="exam-scene">
-
-                <div className="scene-glow"></div>
-
-                <div className="laptop">
-
-                  <div className="laptop-screen">
-
-                    <div className="screen-top">
-                      STUDENT PORTAL
-                    </div>
-
-                    <div className="screen-row wide"></div>
-
-                    <div className="screen-row"></div>
-
-                    <div className="screen-row"></div>
-
-                    <div className="screen-button">
-                      REGISTER
-                    </div>
-
-                  </div>
-
-                  <div className="laptop-base"></div>
-
-                </div>
-
-                <div className="scene-book book-one"></div>
-
-                <div className="scene-book book-two"></div>
-
-                <div className="scene-plant">
-
-                  <span></span>
-                  <span></span>
-                  <span></span>
-
-                  <div></div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="feature-strip">
-
-              <Feature
-                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
-                title="Secure"
-                text="Registration"
-              />
-
-              <Feature
-                icon={<GraduationCap size={17} strokeWidth={2.3} />}
-                title="Student"
-                text="Portal"
-              />
-
-              <Feature
-                icon={<MonitorCheck size={17} strokeWidth={2.4} />}
-                title="AI-Powered"
-                text="Monitoring"
-              />
-
-              <Feature
-                icon={<ShieldCheck size={17} strokeWidth={2.4} />}
-                title="Data"
-                text="Privacy"
-              />
-
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* RIGHT SIDE */}
-
-        <section className="login-panel">
-
-          <div className="login-card register-card">
-
-            <div className="login-cap"><ShieldCheck size={26} strokeWidth={2.2} /></div>
-
-            <h2>
-              Create an Account
-            </h2>
-
-            <p className="login-subtitle">
-              Register to access your student examination portal
-            </p>
-
-            <form onSubmit={handleRegister}>
-
-              <label htmlFor="register-name">
-                Full Name
-              </label>
-
-              <div className="input-wrap">
-
-                <span className="input-icon"><UserRound size={17} /></span>
-
-                <input
-                  id="register-name"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={registerName}
-                  onChange={(e) =>
-                    setRegisterName(e.target.value)
-                  }
-                  required
-                  autoComplete="name"
-                />
-
-              </div>
-
-              <label htmlFor="register-email">
-                Email Address
-              </label>
-
-              <div className="input-wrap">
-
-                <span className="input-icon"><Mail size={17} /></span>
-
-                <input
-                  id="register-email"
-                  type="email"
-                  placeholder="student@example.com"
-                  value={registerEmail}
-                  onChange={(e) =>
-                    setRegisterEmail(e.target.value)
-                  }
-                  required
-                  autoComplete="email"
-                />
-
-              </div>
-
-              <label htmlFor="register-phone">
-                Phone Number
-              </label>
-
-              <div className="input-wrap">
-
-                <span className="input-icon"><Phone size={17} /></span>
-
-                <input
-                  id="register-phone"
-                  type="tel"
-                  placeholder="10-digit mobile number"
-                  value={registerPhone}
-                  onChange={(e) =>
-                    setRegisterPhone(
-                      e.target.value
-                        .replace(/\D/g, "")
-                        .slice(0, 10)
-                    )
-                  }
-                  required
-                  maxLength={10}
-                  autoComplete="tel"
-                />
-
-              </div>
-
-              <label htmlFor="register-password">
-                Password
-              </label>
-
-              <div className="input-wrap password-input-wrap">
-
-                <span className="input-icon"><LockKeyhole size={17} /></span>
-
-                <input
-                  id="register-password"
-                  type={showRegisterPassword ? "text" : "password"}
-                  placeholder="Create a password"
-                  value={registerPassword}
-                  onChange={(e) =>
-                    setRegisterPassword(e.target.value)
-                  }
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                />
-
-                <button
-                  type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                  title={showRegisterPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-
-              </div>
-
-              <label htmlFor="register-confirm-password">
-                Confirm Password
-              </label>
-
-              <div className="input-wrap password-input-wrap">
-
-                <span className="input-icon"><LockKeyhole size={17} /></span>
-
-                <input
-                  id="register-confirm-password"
-                  type={showRegisterConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
-                  value={registerConfirmPassword}
-                  onChange={(e) =>
-                    setRegisterConfirmPassword(
-                      e.target.value
-                    )
-                  }
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                />
-
-                <button
-                  type="button"
-                  className="toggle-password-btn"
-                  onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)}
-                  title={showRegisterConfirmPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showRegisterConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-
-              </div>
-
-              {message && (
-                <div className="error-message">
-                  {message}
-                </div>
-              )}
-
-              <button
-                className="login-button"
-                type="submit"
-                disabled={loading}
-              >
-                {loading
-                  ? "Creating Account..."
-                  : "Create Account"}
-              </button>
-
-            </form>
-
-            <div className="or-divider">
-
-              <span></span>
-
-              <b>OR</b>
-
-              <span></span>
-
-            </div>
-
-            <button
-              type="button"
-              className="register-button"
-              onClick={() => {
-                setMessage("");
-                setPage("login");
-              }}
-            >
-              Back to Student Login
-            </button>
-
-            <div className="privacy-note">
-
-              <ShieldCheck size={15} />
-
-              Your privacy and security are our priority.
-
-            </div>
-
-          </div>
-
-          <div className="copyright">
-            © 2026 ExamSecure. All rights reserved.
-          </div>
-
-        </section>
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // STUDENT DASHBOARD
-  // =========================================================
-
-  if (page === "dashboard") {
-    return (
-      <div className="portal-page">
-
-        <header className="portal-navbar">
-
-          <div className="portal-brand">
-
-            <div className="mini-brand-mark"><ShieldCheck size={20} strokeWidth={2.2} /></div>
-
-            <strong>
-              Exam<span>Secure</span>
-            </strong>
-
-          </div>
-
-          <div className="portal-user">
-
-            <div className="user-avatar"><UserRound size={18} /></div>
-
-            <span>
-              {user?.name}
-            </span>
-
-            <button className="portal-logout" onClick={logout}>
-              <LogOut size={15} />
-              Logout
-            </button>
-
-          </div>
-
-        </header>
-
-        <main className="dashboard-main">
-
-          <div className="portal-label">
-            STUDENT PORTAL
-          </div>
-
-          <h1>
-            Welcome back, {user?.name}! 
-          </h1>
-
-          <p className="dashboard-intro">
-            Your examination is ready.
-            Review the details before starting.
-          </p>
-
-          <div className="available-badge">
-
-            <span></span>
-
-            AVAILABLE
-
-          </div>
-
-          <section className="dashboard-card">
-
-            <div className="exam-card-heading">
-
-              <div>
-
-                <h2>
-                  Aptitude Test
-                </h2>
-
-                <p>
-                  AI-Based Online Examination Monitoring
-                  and Integrity System
-                </p>
-
-              </div>
-
-              <div className="card-cap"><ClipboardCheck size={25} strokeWidth={2.1} /></div>
-
-            </div>
-
-            <div className="dashboard-stats">
-
-              <Stat
-                icon={<ClipboardCheck size={18} strokeWidth={2.3} />}
-                value={
-                  exam?.total_questions ||
-                  (questions.length > 0 ? questions.length : 30)
-                }
-                label="Questions"
-              />
-
-              <Stat
-                icon={<Clock3 size={18} strokeWidth={2.3} />}
-                value={exam?.duration_minutes || "30"}
-                label="Minutes"
-              />
-
-              <Stat
-                icon={<Shuffle size={18} strokeWidth={2.3} />}
-                value="Auto"
-                label="Question Set"
-              />
-
-              <Stat
-                icon={<BarChart3 size={17} strokeWidth={2.4} />}
-                value="Mixed"
-                label="Difficulty"
-              />
-
-            </div>
-
-            <div className="before-start">
-
-              <h3>
-                Before you begin
-              </h3>
-
-              <div className="rules-grid">
-
-                <p>
-                  <><Wifi size={15} /> Stable internet connection</>
-                </p>
-
-                <p>
-                  <><EyeOff size={15} /> Do not switch browser tabs</>
-                </p>
-
-                <p>
-                  <><CheckCircle2 size={15} /> Answer all questions</>
-                </p>
-
-                <p>
-                  <><Timer size={15} /> Timer starts immediately</>
-                </p>
-
-              </div>
-
-            </div>
-
-            {message && (
-              <div className="error-message">
-                {message}
-              </div>
-            )}
-
-            <button
-              className="start-button"
-              onClick={startExam}
-              disabled={loading}
-            >
-              {loading
-                ? "Starting Examination..."
-                : <>Start Examination <Play size={16} fill="currentColor" /></>}
-            </button>
-
-          </section>
-
-        </main>
-
-      </div>
-    );
-  }
-
-  // =========================================================
-  // EXAM PAGE
-  // ===========================================================================================================
-
-  // =========================================================
-
-  // =========================================================
-  // =========================================================
-  // RESULT PAGE
-  // =========================================================
-
-  if (page === "result" && result) {
-    if (result.status === "disqualified" || result.status === "terminated" || result.is_malpractice) {
-      return (
-        <div className="dashboard-page result-page malpractice-terminated-page">
-          <header className="top-header result-header" style={{ background: '#7f1d1d', borderColor: '#991b1b' }}>
-            <div className="brand" style={{ color: '#ffffff' }}>
-              <ShieldCheck size={22} color="#fca5a5" />
-              <strong style={{ color: '#ffffff' }}>ExamSecure Security Engine</strong>
-            </div>
-            <div className="header-user" style={{ color: '#fecaca' }}>
-              {result.student_name || user?.name}
-            </div>
-            <button
-              className="logout-button"
-              style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)' }}
-              onClick={() => setPage("dashboard")}
-            >
-              Back to Portal
-            </button>
-          </header>
-
-          <main className="result-main">
-            <div className="result-container">
-              <div className="malpractice-alert-hero">
-                <div className="malpractice-alert-icon">
-                  <AlertTriangle size={42} color="#dc2626" />
-                </div>
-                <div className="malpractice-alert-badge">
-                  EXAM COMPLETED - DISQUALIFIED DUE TO MALPRACTICE
-                </div>
-                <h1>Examination Disqualified</h1>
-                <p className="malpractice-subtitle">
-                  You have completed and submitted your examination. However, because malpractice activity (Copy/Paste or Tab Switch) was detected during your exam session, no score or result was generated.
-                </p>
-              </div>
-
-              <div className="malpractice-details-card">
-                <div className="malpractice-reason-box">
-                  <h3>
-                    <ShieldCheck size={20} /> Detected Malpractice Activity
-                  </h3>
-                  <div className="reason-text">
-                    <strong>Violation Reason: </strong> {result.malpractice_reason || "Tab Switching / Copy & Paste activity detected during examination"}
-                  </div>
-                </div>
-
-                <div className="malpractice-stats-grid">
-                  <div className="mal-stat-card">
-                    <span>Tab Switch Log</span>
-                    <strong>{result.tab_switch_count ?? tabSwitches ?? 0} Switches</strong>
-                  </div>
-                  <div className="mal-stat-card">
-                    <span>Copy/Paste Log</span>
-                    <strong>{result.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0} Attempts</strong>
-                  </div>
-                  <div className="mal-stat-card danger">
-                    <span>Result Status</span>
-                    <strong>NO RESULT GENERATED</strong>
-                  </div>
-                </div>
-
-                <div className="candidate-info-block">
-                  <h4>Candidate & Examination Information</h4>
-                  <div className="candidate-row">
-                    <span>Candidate Name</span>
-                    <strong>{result.student_name || user?.name}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Email Address</span>
-                    <strong>{result.student_email || user?.email}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Examination</span>
-                    <strong>{result.exam_title || exam?.title || "Aptitude Test"}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Question Set</span>
-                    <strong>{result.question_set || "A"}</strong>
-                  </div>
-                  <div className="candidate-row">
-                    <span>Final Evaluation Status</span>
-                    <strong className="status-disqualified">🛑 DISQUALIFIED (SCORE: 0 / NO RESULT GENERATED)</strong>
-                  </div>
-                </div>
-
-                <div className="malpractice-policy-notice" style={{ background: '#fff1f2', border: '1px solid #fca5a5' }}>
-                  <AlertTriangle size={22} style={{ flexShrink: 0, color: '#dc2626' }} />
-                  <div>
-                    <strong style={{ color: '#991b1b', display: 'block', marginBottom: '4px' }}>🛑 1-Hour Account Lockdown Active:</strong>
-                    <p style={{ color: '#7f1d1d', margin: 0 }}>
-                      As per examination rules, your account is locked from attempting or starting this examination for <strong>1 HOUR</strong> from the time of disqualification.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  className="result-back-button danger-button"
-                  onClick={() => setPage("dashboard")}
-                  style={{ width: '100%', padding: '16px', fontSize: '16px', fontWeight: '800' }}
-                >
-                  Return to Student Portal
-                </button>
-              </div>
-            </div>
-          </main>
-        </div>
-      );
-    }
-
-    const percentage = Number(result.percentage || 0);
-    const score = Number(result.score || 0);
-    const total = Number(result.total_questions || 0);
-
-    let performance = "Needs Improvement";
-
-    if (percentage >= 80) {
-      performance = "Excellent Performance";
-    } else if (percentage >= 60) {
-      performance = "Good Performance";
-    } else if (percentage >= 40) {
-      performance = "Average Performance";
-    }
-
-    return (
-      <div className="app result-page">
-
-        {/* HEADER */}
-        <header className="top-header result-header">
-
-          <div className="brand">
-            <span className="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l8 4v5c0 4.5-3.4 7.9-8 9-4.6-1.1-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span>
-            <strong>ExamSecure</strong>
-          </div>
-
-          <div className="header-user">
-            <span className="user-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/></svg></span>
-            {user?.name}
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={() => setPage("dashboard")}
-          >
-            Logout
-          </button>
-
-        </header>
-
-        {/* RESULT CONTENT */}
-        <main className="result-main">
-
-          <div className="result-container">
-
-            {/* PAGE TITLE */}
-            <div className="result-title-section">
-
-              <div className="result-label">
-                EXAMINATION RESULT
-              </div>
-
-              <h1>
-                Your Examination is Complete
-              </h1>
-
-              <p>
-                Here is a summary of your examination performance.
-              </p>
-
-            </div>
-
-            {/* HERO RESULT CARD */}
-            <section className="result-hero-card">
-
-              <div className="result-hero-left">
-
-                <div className="success-icon"><CircleCheck size={30} strokeWidth={2.2} /></div>
-
-                <div>
-                  <div className="completed-badge">
-                    EXAM COMPLETED
-                  </div>
-
-                  <h2>
-                    {result.exam_title}
-                  </h2>
-
-                  <p>
-                    Well done, {result.student_name}!
-                    Your examination has been successfully submitted.
-                  </p>
-                </div>
-
-              </div>
-
-              <div className="question-set-badge">
-                <span>QUESTION SET</span>
-                <strong>{result.question_set}</strong>
-              </div>
-
-            </section>
-
-            {/* SCORE AREA */}
-            <section className="score-dashboard">
-
-              <div className="score-card main-score-card">
-
-                <div className="score-circle">
-
-                  <svg
-                    className="score-ring"
-                    viewBox="0 0 120 120"
-                  >
-                    <circle
-                      className="score-ring-bg"
-                      cx="60"
-                      cy="60"
-                      r="50"
-                    />
-
-                    <circle
-                      className="score-ring-progress"
-                      cx="60"
-                      cy="60"
-                      r="50"
-                      style={{
-                        strokeDashoffset:
-                          314 - (314 * percentage) / 100
-                      }}
-                    />
-                  </svg>
-
-                  <div className="score-circle-content">
-                    <strong>{percentage}%</strong>
-                    <span>Score</span>
-                  </div>
-
-                </div>
-
-                <div className="score-main-text">
-
-                  <span className="score-small-label">
-                    YOUR SCORE
-                  </span>
-
-                  <h2>
-                    {score}
-                    <span> / {total}</span>
-                  </h2>
-
-                  <div className="performance-badge">
-                    {performance}
-                  </div>
-
-                </div>
-
-              </div>
-
-              <div className="score-card">
-
-                <div className="score-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
-
-                <span className="score-card-label">
-                  TOTAL QUESTIONS
-                </span>
-
-                <strong>
-                  {total}
-                </strong>
-
-                <p>
-                  Questions attempted
-                </p>
-
-              </div>
-
-              <div className="score-card">
-
-                <div className="score-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
-
-                <span className="score-card-label">
-                  PERCENTAGE
-                </span>
-
-                <strong>
-                  {percentage}%
-                </strong>
-
-                <p>
-                  Overall performance
-                </p>
-
-              </div>
-
-            </section>
-
-            {/* DETAILS */}
-            <section className="result-details-grid">
-
-              <div className="result-info-card">
-
-                <div className="info-card-heading">
-                  <span className="info-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-3.8 3-5.7 7-5.7s6.3 1.9 7 5.7"/></svg></span>
-
-                  <div>
-                    <h3>Student Details</h3>
-                    <p>Candidate information</p>
-                  </div>
-                </div>
-
-                <div className="info-row">
-                  <span>Student Name</span>
-                  <strong>{result.student_name}</strong>
-                </div>
-
-                <div className="info-row">
-                  <span>Email</span>
-                  <strong>{result.student_email}</strong>
-                </div>
-
-              </div>
-
-              <div className="result-info-card">
-
-                <div className="info-card-heading">
-                  <span className="info-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3"/><path d="M5 21c.7-3.8 3-5.7 7-5.7s6.3 1.9 7 5.7"/></svg></span>
-
-                  <div>
-                    <h3>Examination Details</h3>
-                    <p>Assessment information</p>
-                  </div>
-                </div>
-
-                <div className="info-row">
-                  <span>Exam</span>
-                  <strong>{result.exam_title}</strong>
-                </div>
-
-                <div className="info-row">
-                  <span>Question Set</span>
-                  <strong>{result.question_set}</strong>
-                </div>
-
-                <div className="info-row">
-                  <span>Status</span>
-                  <strong className="status-success">
-                    <CircleCheck size={15} /> {result.status}
-                  </strong>
-                </div>
-
-              </div>
-
-            </section>
-
-            {/* BOTTOM ACTION */}
-            <div className="result-action">
-
-              <button
-                className="result-back-button"
-                onClick={() => setPage("dashboard")}
-              >
-                Back to Student Portal
-              </button>
-
-              <p>
-                Your examination result has been recorded successfully.
-              </p>
-
-            </div>
-
-          </div>
-
-        </main>
-
-      </div>
-    );
-  }
-  
-  // =========================================================
-  // SELECT ANSWER
-  // =========================================================
-
-  function selectAnswer(option) {
-
-    const question =
-      questions[currentQuestion];
-
-    if (!question) {
-      return;
-    }
-
-    setAnswers((previous) => ({
-      ...previous,
-      [question.id]: option,
-    }));
-  }
-
-  // =========================================================
-  // FORMAT TIMER
-  // =========================================================
-
-  function formatTime(seconds) {
-
-    const minutes =
-      Math.floor(seconds / 60);
-
-    const secs =
-      seconds % 60;
-
-    return `${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(secs).padStart(
-      2,
-      "0"
-    )}`;
-  }
-
-  // =========================================================
-  // SUBMIT EXAM
-  // =========================================================
-
-  async function handleSubmitExam(autoSubmit = false) {
-
-    if (submitting) {
-      return;
-    }
+  const handleSubmitExam = useCallback(async (autoSubmit = false) => {
+    if (submitting) return;
 
     setSubmitting(true);
     setExamMessage("");
 
-    const answerList = answers;
-
     const payload = {
       attempt_id: attemptId,
       student_id: user?.id,
-      answers: answerList,
+      answers: answers,
       tab_switches: tabSwitches,
       copy_attempts: copyAttempts,
       paste_attempts: pasteAttempts,
       time_remaining: timeLeft,
     };
 
-    console.log(
-      "SUBMIT EXAM PAYLOAD:",
-      payload
-    );
-
     try {
-
-      /*
-       * Submit exam endpoint
-       */
-
       const response = await fetch(`${API_URL}/exam/${exam?.id || EXAM_ID}/submit`, {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(user),
-          },
-
-          credentials: "include",
-
-          body: JSON.stringify(payload),
-        }
-      );
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(user),
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
       const data = await response.json();
-
-      console.log(
-        "SUBMIT EXAM RESPONSE:",
-        data
-      );
 
       if (data.status === "terminated" || data.status === "malpractice" || data.is_malpractice || response.status === 403) {
         setResult({
@@ -3587,19 +290,15 @@ async function logout() {
           question_set: questionSet || "A"
         });
         setPage("result");
+        addToast("Examination disqualified due to malpractice activity", "error");
         setSubmitting(false);
         return;
       }
 
       if (response.ok && data.success) {
+        addToast(autoSubmit ? "Time expired. Examination auto-submitted." : "Examination submitted successfully!", "success");
 
-        alert(
-          autoSubmit
-            ? "Time is over. Your examination has been submitted."
-            : "Examination submitted successfully."
-        );
-
-        const total = data.total_questions || Object.keys(answerList).length || 30;
+        const total = data.total_questions || Object.keys(answers).length || 30;
         const score = data.score || 0;
         const percentage = data.percentage ?? (total > 0 ? Math.round((score / total) * 100) : 0);
 
@@ -3617,568 +316,1801 @@ async function logout() {
 
         setResult(data.result || resultData);
         setPage("result");
-
       } else {
-
-        setExamMessage(
-          data.message ||
-            "Unable to submit examination."
-        );
-
+        setExamMessage(data.message || "Unable to submit examination.");
+        addToast(data.message || "Submission failed", "error");
         setSubmitting(false);
       }
-
     } catch (error) {
-
-      console.error(
-        "SUBMIT EXAM ERROR:",
-        error
-      );
-
-      setExamMessage(
-        "Cannot connect to backend while submitting."
-      );
-
-      setSubmitting(false);
+      console.error("SUBMIT EXAM ERROR:", error);
+      setExamMessage("Network error while submitting examination.");
+      addToast("Network connection failed during submission", "error");
     }
-  }
+  }, [submitting, attemptId, user, answers, tabSwitches, copyAttempts, pasteAttempts, timeLeft, exam, questions, questionSet]);
 
   // =========================================================
-  // EMPTY QUESTIONS
+  // EXAM TIMER EFFECT
   // =========================================================
 
-  if (!questions || questions.length === 0) {
+  useEffect(() => {
+    if (page !== "exam") return;
 
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleSubmitExam(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [page, handleSubmitExam]);
+
+  // =========================================================
+  // SILENT MALPRACTICE MONITORING & ANTI-CHEAT LISTENERS
+  // =========================================================
+
+  const handleMalpracticeViolation = useCallback((type, detail) => {
+    if (page !== "exam") return;
+
+    if (type === "tab_switch") setTabSwitches((prev) => prev + 1);
+    else if (type === "copy" || type === "shortcut") setCopyAttempts((prev) => prev + 1);
+    else if (type === "paste" || type === "cut") setPasteAttempts((prev) => prev + 1);
+
+    addToast(`Security Warning: ${detail}`, "warning");
+
+    if (attemptId) {
+      const endpoint = type === "tab_switch" ? "tab-switch" : "copy-paste";
+      fetch(`${API_URL}/attempt/${attemptId}/${endpoint}`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include"
+      }).catch(err => console.error("Log violation error:", err));
+    }
+  }, [page, attemptId, user]);
+
+  useEffect(() => {
+    if (page !== "exam") return;
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        handleMalpracticeViolation("tab_switch", "Tab switch / Window minimization detected");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [page, handleMalpracticeViolation]);
+
+  useEffect(() => {
+    if (page !== "exam") return;
+
+    const handleCopy = (e) => { e.preventDefault(); handleMalpracticeViolation("copy", "Copy action blocked"); };
+    const handlePaste = (e) => { e.preventDefault(); handleMalpracticeViolation("paste", "Paste action blocked"); };
+    const handleCut = (e) => { e.preventDefault(); handleMalpracticeViolation("cut", "Cut action blocked"); };
+    const handleContextMenu = (e) => { e.preventDefault(); handleMalpracticeViolation("shortcut", "Right click menu blocked"); };
+
+    const handleKeyboard = (e) => {
+      const key = e.key.toLowerCase();
+      if (
+        (e.ctrlKey && (key === "c" || key === "v" || key === "x" || key === "u")) ||
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && (key === "i" || key === "j" || key === "c"))
+      ) {
+        e.preventDefault();
+        handleMalpracticeViolation("shortcut", `Prohibited shortcut (${e.key}) blocked`);
+      }
+    };
+
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+    document.addEventListener("cut", handleCut);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyboard);
+
+    return () => {
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+      document.removeEventListener("cut", handleCut);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyboard);
+    };
+  }, [page, handleMalpracticeViolation]);
+
+  // =========================================================
+  // HANDLERS (Auth & Management)
+  // =========================================================
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/student/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setUser(data.user);
+        localStorage.setItem("examsecure_user", JSON.stringify(data.user));
+        setPage("dashboard");
+        setPassword("");
+        addToast("Logged in successfully!", "success");
+
+        if (rememberMe) localStorage.setItem("examsecure_remember_email", data.user.email);
+        else localStorage.removeItem("examsecure_remember_email");
+      } else {
+        setMessage(data.message || "Invalid email or password.");
+        addToast(data.message || "Login failed", "error");
+      }
+    } catch (err) {
+      console.error("LOGIN ERROR:", err);
+      setMessage("Cannot connect to backend server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username: adminUsername.trim(), password: adminPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setUser(data.user);
+        setPage("admin-dashboard");
+        setAdminPassword("");
+        addToast("Welcome Administrator!", "success");
+      } else {
+        setMessage(data.message || "Invalid admin credentials.");
+        addToast(data.message || "Admin authentication failed", "error");
+      }
+    } catch (err) {
+      console.error("ADMIN LOGIN ERROR:", err);
+      setMessage("Cannot connect to backend server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setMessage("");
+
+    if (registerPassword !== registerConfirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+
+    if (registerPhone.length !== 10) {
+      setMessage("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/student/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: registerName.trim(),
+          email: registerEmail.trim(),
+          phone: registerPhone,
+          password: registerPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        addToast("Registration successful! You can now log in.", "success");
+        setRegisterName("");
+        setRegisterEmail("");
+        setRegisterPhone("");
+        setRegisterPassword("");
+        setRegisterConfirmPassword("");
+        setTimeout(() => setPage("login"), 1200);
+      } else {
+        setMessage(data.message || "Registration failed.");
+      }
+    } catch (err) {
+      console.error("REGISTER ERROR:", err);
+      setMessage("Unable to connect to server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendForgotCode = async (e) => {
+    if (e) e.preventDefault();
+    if (!forgotEmail.trim()) {
+      setForgotMessage("Please enter your registered email address.");
+      setForgotMessageType("error");
+      return;
+    }
+    setForgotLoading(true);
+    setForgotMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() })
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setForgotStep(2);
+        setForgotMessageType("success");
+        setForgotMessage(data.message || "Verification code sent!");
+        if (data.verification_code) setForgotCode(data.verification_code);
+      } else {
+        setForgotMessageType("error");
+        setForgotMessage(data.message || "No registered account found with this email.");
+      }
+    } catch (err) {
+      console.error("FORGOT PWD ERROR:", err);
+      setForgotMessageType("error");
+      setForgotMessage("Network error. Please try again.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!forgotCode || !forgotNewPassword) {
+      setForgotMessage("Please enter the verification code and new password.");
+      setForgotMessageType("error");
+      return;
+    }
+    if (forgotNewPassword.length < 6) {
+      setForgotMessage("Password must contain at least 6 characters.");
+      setForgotMessageType("error");
+      return;
+    }
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          code: forgotCode.trim(),
+          new_password: forgotNewPassword
+        })
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setForgotMessageType("success");
+        setForgotMessage(data.message || "Password reset successfully!");
+        setEmail(forgotEmail.trim());
+        setPassword(forgotNewPassword);
+
+        setTimeout(() => {
+          setShowForgotModal(false);
+          setForgotStep(1);
+          setForgotEmail("");
+          setForgotCode("");
+          setForgotNewPassword("");
+          setForgotMessage("");
+          addToast("Password reset successfully! Click Sign In to continue.", "success");
+        }, 1500);
+      } else {
+        setForgotMessageType("error");
+        setForgotMessage(data.message || "Invalid or expired verification code.");
+      }
+    } catch (err) {
+      console.error("RESET PWD ERROR:", err);
+      setForgotMessageType("error");
+      setForgotMessage("Unable to reset password.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/logout`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("LOGOUT ERROR:", err);
+    }
+
+    localStorage.removeItem("examsecure_user");
+    setUser(null);
+    setPage("login");
+    setExam(null);
+    setQuestions([]);
+    setQuestionSet("");
+    setAttemptId(null);
+    setMessage("");
+    addToast("Logged out successfully", "info");
+  };
+
+  const startExam = async () => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/exam/${EXAM_ID}/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(user),
+        },
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setExam(data.exam);
+        setQuestions(Array.isArray(data.questions) ? data.questions : []);
+        setQuestionSet(data.question_set || "A");
+        setAttemptId(data.attempt_id || null);
+        setTimeLeft((data.exam?.duration_minutes || 30) * 60);
+        setTabSwitches(0);
+        setCopyAttempts(0);
+        setPasteAttempts(0);
+        setAnswers({});
+        setFlaggedQuestions({});
+        setCurrentQuestion(0);
+        setPage("exam");
+        addToast("Examination started. Security monitoring active.", "info");
+      } else {
+        if (data.is_locked) {
+          setMessage(`🛑 ACCESS DENIED: Account locked from attempting exam for 1 hour due to malpractice disqualification. (Remaining: ~${data.minutes_remaining || 60} mins)`);
+        } else {
+          setMessage(data.message || "Unable to start examination.");
+        }
+      }
+    } catch (err) {
+      console.error("START EXAM ERROR:", err);
+      setMessage("Cannot connect to backend server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Admin Management APIs
+  const loadAdminStudents = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/students`, {
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) setAdminStudents(data.students || []);
+    } catch (err) { console.error("LOAD STUDENTS ERROR:", err); }
+  };
+
+  const saveStudent = async (e) => {
+    e.preventDefault();
+    setAdminFormLoading(true);
+    try {
+      const isEditing = Boolean(editingStudentId);
+      const url = isEditing ? `${API_URL}/admin/students/${editingStudentId}` : `${API_URL}/admin/students`;
+      const response = await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders(user) },
+        credentials: "include",
+        body: JSON.stringify(studentForm),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setStudentForm({ name: "", email: "", phone: "", password: "" });
+        setEditingStudentId(null);
+        await loadAdminStudents();
+        await loadAdminDashboard();
+        addToast(isEditing ? "Student updated!" : "Student created!", "success");
+      } else {
+        addToast(data.message || "Failed to save student", "error");
+      }
+    } catch (err) { console.error("SAVE STUDENT ERROR:", err); }
+    finally { setAdminFormLoading(false); }
+  };
+
+  const deleteStudent = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this student account?")) return;
+    try {
+      const response = await fetch(`${API_URL}/admin/students/${id}`, {
+        method: "DELETE",
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        await loadAdminStudents();
+        await loadAdminDashboard();
+        addToast("Student deleted", "success");
+      }
+    } catch (err) { console.error("DELETE STUDENT ERROR:", err); }
+  };
+
+  const loadAdminExams = async () => {
+    try {
+      const response = await fetch(`${API_URL}/exam/`, {
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) setAdminExams(data.exams || []);
+    } catch (err) { console.error("LOAD EXAMS ERROR:", err); }
+  };
+
+  const saveExam = async (e) => {
+    e.preventDefault();
+    setAdminFormLoading(true);
+    try {
+      const isEditing = Boolean(editingExamId);
+      const url = isEditing ? `${API_URL}/exam/${editingExamId}` : `${API_URL}/exam/`;
+      const response = await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders(user) },
+        credentials: "include",
+        body: JSON.stringify(examForm),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setExamForm({ title: "", total_questions: 30, duration_minutes: 30, is_active: 1 });
+        setEditingExamId(null);
+        await loadAdminExams();
+        await loadAdminDashboard();
+        addToast(isEditing ? "Exam updated!" : "Exam created!", "success");
+      } else {
+        addToast(data.message || "Failed to save exam", "error");
+      }
+    } catch (err) { console.error("SAVE EXAM ERROR:", err); }
+    finally { setAdminFormLoading(false); }
+  };
+
+  const loadAdminAttempts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/attempts`, {
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) setAdminAttempts(data.attempts || []);
+    } catch (err) { console.error("LOAD ATTEMPTS ERROR:", err); }
+  };
+
+  const cancelAttemptAdmin = async (id) => {
+    if (!window.confirm("Are you sure you want to disqualify this attempt and set score to 0?")) return;
+    try {
+      const response = await fetch(`${API_URL}/admin/attempts/${id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders(user) },
+        credentials: "include",
+        body: JSON.stringify({ reason: "Disqualified by Administrator due to Malpractice Activity" })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        addToast("Attempt disqualified!", "success");
+        setSelectedAttempt(null);
+        await loadAdminAttempts();
+        await loadAdminDashboard();
+      }
+    } catch (err) { console.error("CANCEL ATTEMPT ERROR:", err); }
+  };
+
+  const clearAttemptFlagAdmin = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/admin/attempts/${id}/clear-flag`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(user) },
+        credentials: "include"
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        addToast("Malpractice flag cleared", "success");
+        if (selectedAttempt) setSelectedAttempt({ ...selectedAttempt, malpractice_reason: null });
+        await loadAdminAttempts();
+      }
+    } catch (err) { console.error("CLEAR FLAG ERROR:", err); }
+  };
+
+  const exportAttemptsCSV = () => {
+    if (!adminAttempts || adminAttempts.length === 0) return;
+    const headers = ["Attempt ID,Student Name,Email,Exam Title,Question Set,Score,Total Questions,Percentage,Tab Switches,Copy Paste,Status,Start Time"];
+    const rows = adminAttempts.map(a => [
+      a.attempt_id,
+      `"${a.student_name || ""}"`,
+      `"${a.student_email || ""}"`,
+      `"${a.exam_title || ""}"`,
+      a.question_set || "",
+      a.score || 0,
+      a.total_questions || 0,
+      `${a.percentage || 0}%`,
+      a.tab_switch_count || 0,
+      a.copy_paste_count || 0,
+      a.status || "",
+      `"${a.start_time || ""}"`
+    ].join(","));
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `ExamSecure_Attempt_Reports_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast("CSV Report downloaded successfully!", "success");
+  };
+
+  // Helper Option Selector in Exam
+  const selectOption = (opt) => {
+    if (!questions[currentQuestion]) return;
+    const qId = questions[currentQuestion].id;
+    setAnswers((prev) => ({ ...prev, [qId]: opt }));
+  };
+
+  const toggleBookmark = () => {
+    if (!questions[currentQuestion]) return;
+    const qId = questions[currentQuestion].id;
+    setFlaggedQuestions((prev) => ({ ...prev, [qId]: !prev[qId] }));
+  };
+
+  const formatTimeStr = (secs) => {
+    const mins = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${String(mins).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  // =========================================================
+  // NAVBAR COMPONENT
+  // =========================================================
+
+  const renderNavbar = () => (
+    <header className="top-navbar">
+      <div className="brand-container">
+        <div className="brand-icon-box">
+          <ShieldCheck size={22} strokeWidth={2.5} />
+        </div>
+        <div className="brand-name">
+          Exam<span>Secure</span>
+        </div>
+      </div>
+
+      <div className="navbar-right">
+        <button
+          type="button"
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+          {theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
+        </button>
+
+        {user && (
+          <div className="user-badge">
+            <div className="user-avatar">
+              <UserRound size={15} />
+            </div>
+            <span>{user.name}</span>
+          </div>
+        )}
+
+        {user && (
+          <button type="button" className="nav-btn nav-btn-danger" onClick={logout}>
+            <LogOut size={16} /> Logout
+          </button>
+        )}
+      </div>
+    </header>
+  );
+
+  // =========================================================
+  // TOAST RENDERER
+  // =========================================================
+
+  const renderToasts = () => (
+    <div className="toast-stack">
+      {toasts.map((t) => (
+        <div key={t.id} className={`toast-pill ${t.type}`}>
+          {t.type === "success" && <CheckCircle2 size={18} color="#10b981" />}
+          {t.type === "error" && <AlertTriangle size={18} color="#f43f5e" />}
+          {t.type === "warning" && <AlertTriangle size={18} color="#f59e0b" />}
+          {t.type === "info" && <Info size={18} color="#6366f1" />}
+          <span>{t.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // =========================================================
+  // PAGE RENDERERS
+  // =========================================================
+
+  // 1. LOGIN PAGE
+  if (page === "login") {
     return (
-      <div className="loading-screen">
+      <div className="app-container">
+        {renderNavbar()}
+        {renderToasts()}
 
-        <div className="spinner"></div>
+        <div className="auth-page">
+          <section className="auth-hero-section">
+            <div className="auth-hero-glow"></div>
+            <div className="auth-hero-content">
+              <div className="hero-eyebrow">
+                <ShieldCheck size={14} /> Next-Gen Exam Integrity Engine
+              </div>
+              <h1 className="auth-hero-title">
+                Smart Exams.
+                <br />
+                <span>Trusted Security.</span>
+                <br />
+                Instant Evaluation.
+              </h1>
+              <p className="auth-hero-desc">
+                ExamSecure delivers automated proctoring, real-time malpractice detection, multi-set question randomization, and instant score analytics for universities and enterprise certifications.
+              </p>
 
-        <p>
-          Loading questions...
-        </p>
+              <div className="hero-features-list">
+                <div className="hero-feature-card">
+                  <div className="hero-feature-icon"><MonitorCheck size={20} /></div>
+                  <div className="hero-feature-text">
+                    <strong>AI Proctoring</strong>
+                    <small>Tab switch & copy detection</small>
+                  </div>
+                </div>
 
+                <div className="hero-feature-card">
+                  <div className="hero-feature-icon"><Shuffle size={20} /></div>
+                  <div className="hero-feature-text">
+                    <strong>Randomized Sets</strong>
+                    <small>Set A, B, C, D distribution</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="auth-panel-section">
+            <div className="auth-card">
+              <div className="auth-header">
+                <h2>Student Login</h2>
+                <p>Sign in with your credentials to access your examination portal</p>
+              </div>
+
+              {message && <div className="msg-banner error"><AlertTriangle size={16} /> {message}</div>}
+
+              <form onSubmit={handleLogin} className="auth-form">
+                <div className="form-group">
+                  <label htmlFor="email">Email Address</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><Mail size={18} /></span>
+                    <input
+                      id="email"
+                      type="email"
+                      className="input-field"
+                      placeholder="student@exam.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="password">Password</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><LockKeyhole size={18} /></span>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      className="input-field"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="toggle-pwd-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-actions-row">
+                  <label className="remember-label">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    />
+                    Remember my email
+                  </label>
+
+                  <button
+                    type="button"
+                    className="forgot-link-btn"
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setForgotStep(1);
+                      setForgotMessage("");
+                      setShowForgotModal(true);
+                    }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? "Authenticating..." : "Sign In to Exam"} <ArrowRight size={18} />
+                </button>
+              </form>
+
+              <div className="divider-line"><span>OR</span></div>
+
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => { setMessage(""); setPage("register"); }}
+              >
+                Create Student Account
+              </button>
+
+              <div className="divider-line"><span>ADMIN ACCESS</span></div>
+
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => { setMessage(""); setPage("admin-login"); }}
+              >
+                Admin Portal Login
+              </button>
+            </div>
+          </section>
+        </div>
+
+        {/* FORGOT PASSWORD MODAL */}
+        {showForgotModal && (
+          <div className="modal-backdrop" onClick={() => setShowForgotModal(false)}>
+            <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header-box">
+                <h3>Reset Account Password</h3>
+                <button type="button" onClick={() => setShowForgotModal(false)}><X size={20} /></button>
+              </div>
+
+              <div className="modal-body-box">
+                {forgotMessage && (
+                  <div className={`msg-banner ${forgotMessageType === "error" ? "error" : "success"}`}>
+                    {forgotMessage}
+                  </div>
+                )}
+
+                {forgotStep === 1 ? (
+                  <form onSubmit={handleSendForgotCode} className="auth-form">
+                    <div className="form-group">
+                      <label htmlFor="forgot-email-input">Registered Email Address</label>
+                      <div className="input-container">
+                        <span className="input-icon-prefix"><Mail size={18} /></span>
+                        <input
+                          id="forgot-email-input"
+                          type="email"
+                          className="input-field"
+                          placeholder="Enter your registered email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <button type="submit" className="btn-primary" disabled={forgotLoading}>
+                      {forgotLoading ? "Generating Code..." : "Send Verification Code"}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleResetPasswordSubmit} className="auth-form">
+                    <div className="form-group">
+                      <label htmlFor="forgot-code-input">6-Digit Verification Code</label>
+                      <input
+                        id="forgot-code-input"
+                        type="text"
+                        className="input-field"
+                        style={{ paddingLeft: "1rem", letterSpacing: "0.2em", fontWeight: "700" }}
+                        placeholder="123456"
+                        maxLength={6}
+                        value={forgotCode}
+                        onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, ""))}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="forgot-new-pwd-input">New Password</label>
+                      <div className="input-container">
+                        <span className="input-icon-prefix"><LockKeyhole size={18} /></span>
+                        <input
+                          id="forgot-new-pwd-input"
+                          type={showForgotNewPassword ? "text" : "password"}
+                          className="input-field"
+                          placeholder="Min 6 characters"
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          className="toggle-pwd-btn"
+                          onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                        >
+                          {showForgotNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="btn-primary" disabled={forgotLoading}>
+                      {forgotLoading ? "Resetting..." : "Reset Password & Log In"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  const question =
-    questions[currentQuestion];
-
-  const answeredCount =
-    Object.keys(answers).length;
-
-  const progress =
-    questions.length > 0
-      ? (answeredCount / questions.length) * 100
-      : 0;
-
-  // =========================================================
-  // EXAM UI
-  // =========================================================
-
-  return (
-    <div className="exam-page">
-
-      <header className="exam-navbar">
-
-        <div className="portal-brand">
-
-          <div className="mini-brand-mark">
-            ES
-          </div>
-
-          <strong>
-            Exam<span>Secure</span>
-          </strong>
-
-        </div>
-
-        <div className="exam-title-mini">
-
-          <span>
-            ONLINE EXAMINATION
-          </span>
-
-          <strong>
-            {exam?.title || "Aptitude Test"}
-          </strong>
-
-        </div>
-
-        <div className="exam-actions">
-
-          <div className={`proctoring-status-pill ${(tabSwitches + copyAttempts + pasteAttempts) > 0 ? "warning-active" : ""}`}>
-            <ShieldCheck size={14} /> Security Proctoring Active | Malpractice Activity: {tabSwitches + copyAttempts + pasteAttempts}
-          </div>
-
-          <div className="exam-user"><UserRound size={15} /> {user?.name}</div>
-
-          <div
-            className={
-              `exam-timer ${
-                timeLeft < 300
-                  ? "warning"
-                  : ""
-              }`
-            }
-          >
-            <Timer size={15} /> {formatTime(timeLeft)}
-          </div>
-
-          <button
-            className="exam-logout"
-            onClick={() => {
-              const confirmLogout =
-                window.confirm(
-                  "Are you sure you want to logout? Your current examination may be lost."
-                );
-
-              if (confirmLogout) {
-                logout();
-              }
-            }}
-          >
-            <LogOut size={15} />
-            Logout
-          </button>
-
-        </div>
-
-      </header>
-
-      <main className="exam-main">
-
-        <div className="exam-topline">
-
-          <div>
-
-            <span className="set-badge">
-              Question Set {questionSet || "A"}
-            </span>
-
-            <h1>
-              {exam?.title ||
-                "Aptitude Test"}
-            </h1>
-
-          </div>
-
-          <div className="answered-summary">
-
-            <strong>
-              {answeredCount}/{questions.length}
-            </strong>
-
-            <span>
-              Answered
-            </span>
-
-          </div>
-
-        </div>
-
-        <div className="progress-track">
-
-          <div
-            style={{
-              width: `${progress}%`,
-            }}
-          />
-
-        </div>
-
-
-        {examMessage && (
-          <div className="error-message">
-            {examMessage}
-          </div>
-        )}
-
-        <section className="question-card">
-
-          <div className="question-number">
-
-            Question{" "}
-            {currentQuestion + 1}
-            {" "}of{" "}
-            {questions.length}
-
-          </div>
-
-          <h2>
-            {question.question_text}
-          </h2>
-
-          <div className="options">
-
-            {[
-              ["A", question.option_a],
-              ["B", question.option_b],
-              ["C", question.option_c],
-              ["D", question.option_d],
-            ].map(
-              ([letter, text]) => (
-
-                <button
-                  key={letter}
-                  type="button"
-                  className={
-                    answers[question.id] ===
-                    letter
-                      ? "option selected"
-                      : "option"
-                  }
-                  onClick={() =>
-                    selectAnswer(letter)
-                  }
-                  disabled={submitting}
-                >
-
-                  <span className="option-letter">
-                    {letter}
-                  </span>
-
-                  <span>
-                    {text}
-                  </span>
-
-                  {answers[
-                    question.id
-                  ] === letter && (
-                    <span className="selected-check" aria-label="Selected">
-                      <CircleCheck size={18} />
-                    </span>
-                  )}
-
-                </button>
-
-              )
-            )}
-
-          </div>
-
-        </section>
-
-        <div className="question-navigation">
-
-          <button
-            type="button"
-            className="nav-button"
-            disabled={
-              currentQuestion === 0 ||
-              submitting
-            }
-            onClick={() =>
-              setCurrentQuestion(
-                (q) => q - 1
-              )
-            }
-          >
-            Previous
-          </button>
-
-          <div className="question-dots">
-
-            {questions.map(
-              (item, index) => (
-
-                <button
-                  type="button"
-                  key={item.id}
-                  className={
-                    index ===
-                    currentQuestion
-                      ? "dot active"
-                      : answers[item.id]
-                      ? "dot answered"
-                      : "dot"
-                  }
-                  onClick={() =>
-                    setCurrentQuestion(
-                      index
-                    )
-                  }
-                  disabled={submitting}
-                >
-                  {index + 1}
-                </button>
-
-              )
-            )}
-
-          </div>
-
-          {currentQuestion <
-          questions.length - 1 ? (
-
-            <button
-              type="button"
-              className="nav-button"
-              disabled={submitting}
-              onClick={() =>
-                setCurrentQuestion(
-                  (q) => q + 1
-                )
-              }
-            >
-              Next
-              <ArrowRight size={16} />
-            </button>
-
-          ) : (
-
-            <button
-              type="button"
-              className="submit-button"
-              disabled={submitting}
-              onClick={() => {
-
-                const confirmSubmit =
-                  window.confirm(
-                    `You answered ${answeredCount} out of ${questions.length} questions. Submit examination?`
-                  );
-
-                if (confirmSubmit) {
-                  handleSubmitExam(false);
-                }
-
-              }}
-            >
-              {submitting
-                ? "Submitting..."
-                : <>Submit Examination <FileCheck2 size={16} /></>}
-            </button>
-
-          )}
-
-        </div>
-
-      </main>
-
-      {warningModal && (
-        <div className="malpractice-warning-overlay">
-          <div className="malpractice-warning-modal">
-            <div className="warning-modal-header">
-              <AlertTriangle size={36} color="#dc2626" />
-              <h2>{warningModal.title}</h2>
-            </div>
-            <div className="warning-modal-text">
-              {warningModal.detail}
-            </div>
-            <div className="warning-counter-badge">
-              Violation Warning {warningModal.count} of {warningModal.max}
-            </div>
-            <p className="warning-modal-danger-note">
-              <strong>Attention:</strong> Further malpractice violations will result in <strong>IMMEDIATE EXAM TERMINATION</strong> and your result will NOT be generated!
-            </p>
-            <button
-              type="button"
-              className="warning-modal-ack-button"
-              onClick={() => setWarningModal(null)}
-            >
-              I Understand & Resume Exam
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* FORGOT PASSWORD MODAL */}
-      {showForgotModal && (
-        <div className="modal-overlay" onClick={() => setShowForgotModal(false)}>
-          <div className="forgot-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="forgot-modal-header">
-              <div>
-                <h2>Reset Password</h2>
-                <p>
-                  {forgotStep === 1
-                    ? "Enter your registered email address to receive a verification reset code."
-                    : `Verification code sent to ${forgotEmail}. Enter code and your new password below.`}
-                </p>
+  // 2. ADMIN LOGIN PAGE
+  if (page === "admin-login") {
+    return (
+      <div className="app-container">
+        {renderNavbar()}
+        {renderToasts()}
+
+        <div className="auth-page">
+          <section className="auth-hero-section">
+            <div className="auth-hero-glow"></div>
+            <div className="auth-hero-content">
+              <div className="hero-eyebrow">
+                <ShieldCheck size={14} /> Administration & Operations
               </div>
+              <h1 className="auth-hero-title">
+                Full Control Over
+                <br />
+                <span>Exams & Audit Logs.</span>
+              </h1>
+              <p className="auth-hero-desc">
+                Manage student records, customize question pools, set exam durations, clear malpractice flags, and generate detailed CSV attempt performance reports.
+              </p>
+            </div>
+          </section>
+
+          <section className="auth-panel-section">
+            <div className="auth-card">
+              <div className="auth-header">
+                <h2>Admin Login</h2>
+                <p>Enter administrative credentials to access the command center</p>
+              </div>
+
+              {message && <div className="msg-banner error"><AlertTriangle size={16} /> {message}</div>}
+
+              <form onSubmit={handleAdminLogin} className="auth-form">
+                <div className="form-group">
+                  <label htmlFor="admin-user-input">Admin Username</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><UserRound size={18} /></span>
+                    <input
+                      id="admin-user-input"
+                      type="text"
+                      className="input-field"
+                      placeholder="admin"
+                      value={adminUsername}
+                      onChange={(e) => setAdminUsername(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="admin-pwd-input">Admin Password</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><LockKeyhole size={18} /></span>
+                    <input
+                      id="admin-pwd-input"
+                      type={showAdminPassword ? "text" : "password"}
+                      className="input-field"
+                      placeholder="Enter admin password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="toggle-pwd-btn"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    >
+                      {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? "Authenticating..." : "Sign In to Admin Portal"} <ArrowRight size={18} />
+                </button>
+              </form>
+
+              <div className="divider-line"><span>OR</span></div>
+
               <button
                 type="button"
-                className="modal-close-btn"
-                onClick={() => setShowForgotModal(false)}
+                className="btn-outline"
+                onClick={() => { setMessage(""); setPage("login"); }}
               >
-                ✕
+                Back to Student Login
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. STUDENT REGISTER PAGE
+  if (page === "register") {
+    return (
+      <div className="app-container">
+        {renderNavbar()}
+        {renderToasts()}
+
+        <div className="auth-page">
+          <section className="auth-hero-section">
+            <div className="auth-hero-glow"></div>
+            <div className="auth-hero-content">
+              <div className="hero-eyebrow">
+                <GraduationCap size={14} /> Student Onboarding
+              </div>
+              <h1 className="auth-hero-title">
+                Create Your
+                <br />
+                <span>Student Portal.</span>
+              </h1>
+              <p className="auth-hero-desc">
+                Register with your institutional details to participate in online aptitude tests and access secure examination certificates.
+              </p>
+            </div>
+          </section>
+
+          <section className="auth-panel-section">
+            <div className="auth-card">
+              <div className="auth-header">
+                <h2>Create Account</h2>
+                <p>Fill in your candidate details to get started</p>
+              </div>
+
+              {message && <div className="msg-banner error"><AlertTriangle size={16} /> {message}</div>}
+
+              <form onSubmit={handleRegister} className="auth-form">
+                <div className="form-group">
+                  <label htmlFor="reg-name">Full Name</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><UserRound size={18} /></span>
+                    <input
+                      id="reg-name"
+                      type="text"
+                      className="input-field"
+                      placeholder="Harish Kumar"
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="reg-email">Email Address</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><Mail size={18} /></span>
+                    <input
+                      id="reg-email"
+                      type="email"
+                      className="input-field"
+                      placeholder="harish@example.com"
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="reg-phone">10-Digit Mobile Phone</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><Phone size={18} /></span>
+                    <input
+                      id="reg-phone"
+                      type="tel"
+                      className="input-field"
+                      placeholder="9876543210"
+                      value={registerPhone}
+                      onChange={(e) => setRegisterPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      required
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="reg-password">Create Password</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><LockKeyhole size={18} /></span>
+                    <input
+                      id="reg-password"
+                      type={showRegisterPassword ? "text" : "password"}
+                      className="input-field"
+                      placeholder="Min 6 characters"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      className="toggle-pwd-btn"
+                      onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                    >
+                      {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="reg-confirm-pwd">Confirm Password</label>
+                  <div className="input-container">
+                    <span className="input-icon-prefix"><LockKeyhole size={18} /></span>
+                    <input
+                      id="reg-confirm-pwd"
+                      type={showRegisterConfirmPassword ? "text" : "password"}
+                      className="input-field"
+                      placeholder="Re-enter password"
+                      value={registerConfirmPassword}
+                      onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      className="toggle-pwd-btn"
+                      onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)}
+                    >
+                      {showRegisterConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? "Registering..." : "Create Account"} <ArrowRight size={18} />
+                </button>
+              </form>
+
+              <div className="divider-line"><span>OR</span></div>
+
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => { setMessage(""); setPage("login"); }}
+              >
+                Back to Student Login
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. STUDENT DASHBOARD
+  if (page === "dashboard") {
+    return (
+      <div className="app-container">
+        {renderNavbar()}
+        {renderToasts()}
+
+        <main className="dashboard-layout">
+          <div className="welcome-hero-card">
+            <div className="welcome-badge">
+              <Wifi size={14} /> ACTIVE EXAMINATION PERIOD
+            </div>
+            <h1 className="welcome-title">Welcome back, {user?.name || "Student"}! 👋</h1>
+            <p className="welcome-sub">
+              Your examination portal is active. Review test parameters and rules below before starting.
+            </p>
+          </div>
+
+          <div className="dashboard-grid">
+            <div className="exam-card-main">
+              <div className="exam-card-header">
+                <div className="exam-card-title">
+                  <h3>{exam?.title || "Aptitude Test 2026"}</h3>
+                  <p>AI-Based Online Examination Monitoring & Integrity Assessment</p>
+                </div>
+                <div className="badge badge-success"><CheckCircle2 size={14} /> Ready</div>
+              </div>
+
+              <div className="stat-pills-grid">
+                <div className="stat-pill-card">
+                  <div className="stat-pill-icon"><ClipboardCheck size={20} /></div>
+                  <div className="stat-pill-data">
+                    <strong>{exam?.total_questions || 30}</strong>
+                    <span>Questions</span>
+                  </div>
+                </div>
+
+                <div className="stat-pill-card">
+                  <div className="stat-pill-icon"><Clock3 size={20} /></div>
+                  <div className="stat-pill-data">
+                    <strong>{exam?.duration_minutes || 30}m</strong>
+                    <span>Duration</span>
+                  </div>
+                </div>
+
+                <div className="stat-pill-card">
+                  <div className="stat-pill-icon"><Shuffle size={20} /></div>
+                  <div className="stat-pill-data">
+                    <strong>Auto</strong>
+                    <span>Question Set</span>
+                  </div>
+                </div>
+
+                <div className="stat-pill-card">
+                  <div className="stat-pill-icon"><BarChart3 size={20} /></div>
+                  <div className="stat-pill-data">
+                    <strong>Mixed</strong>
+                    <span>Difficulty</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="exam-guidelines-box">
+                <div className="guidelines-title"><ShieldCheck size={18} color="#6366f1" /> Proctoring & Integrity Guidelines</div>
+                <div className="guidelines-grid">
+                  <div className="guideline-item"><CheckCircle2 size={16} /> Continuous tab switch & window focus monitoring</div>
+                  <div className="guideline-item"><CheckCircle2 size={16} /> Copy-paste and right-click context menu prevention</div>
+                  <div className="guideline-item"><CheckCircle2 size={16} /> Random set assignment (Set A, B, C, D) per student</div>
+                  <div className="guideline-item"><CheckCircle2 size={16} /> Malpractice disqualification triggers 1-hour exam lockdown</div>
+                </div>
+              </div>
+
+              {message && <div className="msg-banner error" style={{ marginBottom: "1.5rem" }}><AlertTriangle size={16} /> {message}</div>}
+
+              <button className="btn-primary" onClick={startExam} disabled={loading} style={{ width: "100%", padding: "1rem" }}>
+                {loading ? "Launching Exam Environment..." : <>Start Examination Now <Play size={18} fill="currentColor" /></>}
               </button>
             </div>
 
-            {forgotMessage && (
-              <div className={`forgot-msg ${forgotMessageType}`}>
-                {forgotMessage}
+            <div className="palette-sidebar">
+              <div className="palette-title">
+                <span>Candidate Information</span>
+                <UserRound size={18} />
               </div>
-            )}
-
-            {forgotStep === 1 ? (
-              <form onSubmit={handleSendForgotCode}>
-                <label htmlFor="forgot-email">Registered Email Address</label>
-                <div className="input-wrap">
-                  <span className="input-icon"><Mail size={17} /></span>
-                  <input
-                    id="forgot-email"
-                    type="email"
-                    placeholder="Enter your registered email"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    required
-                    autoFocus
-                  />
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "0.5rem" }}>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Student Name</span>
+                  <strong style={{ fontSize: "0.95rem" }}>{user?.name}</strong>
                 </div>
-
-                <button
-                  type="submit"
-                  className="login-button"
-                  style={{ marginTop: '20px' }}
-                  disabled={forgotLoading}
-                >
-                  {forgotLoading ? "Sending Code..." : "Send Verification Code"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleResetPasswordSubmit}>
-                <label htmlFor="forgot-code">6-Digit Verification Code</label>
-                <div className="input-wrap" style={{ marginBottom: '16px' }}>
-                  <input
-                    id="forgot-code"
-                    type="text"
-                    className="forgot-code-input"
-                    placeholder="123456"
-                    maxLength={6}
-                    value={forgotCode}
-                    onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, ''))}
-                    required
-                    autoFocus
-                  />
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Email</span>
+                  <strong style={{ fontSize: "0.95rem" }}>{user?.email}</strong>
                 </div>
-
-                <label htmlFor="forgot-new-password">New Password</label>
-                <div className="input-wrap password-input-wrap" style={{ marginBottom: '20px' }}>
-                  <span className="input-icon"><LockKeyhole size={17} /></span>
-                  <input
-                    id="forgot-new-password"
-                    type={showForgotNewPassword ? "text" : "password"}
-                    placeholder="Enter new password (min 6 chars)"
-                    value={forgotNewPassword}
-                    onChange={(e) => setForgotNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                  <button
-                    type="button"
-                    className="toggle-password-btn"
-                    onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                    title={showForgotNewPassword ? "Hide password" : "Show password"}
-                    tabIndex={-1}
-                  >
-                    {showForgotNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Phone</span>
+                  <strong style={{ fontSize: "0.95rem" }}>{user?.phone || "N/A"}</strong>
                 </div>
-
-                <button
-                  type="submit"
-                  className="login-button"
-                  disabled={forgotLoading}
-                >
-                  {forgotLoading ? "Resetting Password..." : "Reset Password & Login"}
-                </button>
-
-                <div style={{ textAlign: 'center', marginTop: '14px' }}>
-                  <button
-                    type="button"
-                    style={{ background: 'none', border: 'none', color: '#3569d8', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => setForgotStep(1)}
-                  >
-                    ← Change Email / Resend Code
-                  </button>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Account Status</span>
+                  <span className="badge badge-success"><ShieldCheck size={12} /> Verified Candidate</span>
                 </div>
-              </form>
-            )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        </main>
+      </div>
+    );
+  }
 
-    </div>
-  );
+  // 5. EXAMINATION ENGINE PAGE
+  if (page === "exam") {
+    const q = questions[currentQuestion] || {};
+    const answeredCount = Object.keys(answers).length;
+    const progress = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
+
+    return (
+      <div className="exam-interface-layout">
+        <header className="exam-sticky-bar">
+          <div className="brand-container">
+            <div className="brand-icon-box" style={{ width: "32px", height: "32px" }}>
+              <ShieldCheck size={18} />
+            </div>
+            <div className="brand-name" style={{ fontSize: "1.1rem" }}>
+              Exam<span>Secure</span>
+            </div>
+          </div>
+
+          <div className={`proctoring-indicator ${(tabSwitches + copyAttempts + pasteAttempts) > 0 ? "warning" : ""}`}>
+            <MonitorCheck size={16} /> Security Engine Active | Violations: {tabSwitches + copyAttempts + pasteAttempts}
+          </div>
+
+          <div className={`timer-badge ${timeLeft < 300 ? "warning" : ""}`}>
+            <Timer size={18} /> {formatTimeStr(timeLeft)}
+          </div>
+        </header>
+
+        <div style={{ height: "4px", background: "var(--border-light)", width: "100%" }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, var(--primary-500), var(--accent-emerald))", transition: "width 0.3s ease" }}></div>
+        </div>
+
+
+        <main className="exam-content-grid">
+          <div className="question-workspace">
+            <div>
+              <div className="question-header-row">
+                <span className="question-number-pill">
+                  Question {currentQuestion + 1} of {questions.length}
+                </span>
+                <span className="category-pill">
+                  {q.category || "General Aptitude"} • Set {questionSet || "A"}
+                </span>
+              </div>
+
+              <div className="question-body-text">
+                {q.question_text || "Loading question statement..."}
+              </div>
+
+              <div className="options-stack">
+                {[
+                  ["A", q.option_a],
+                  ["B", q.option_b],
+                  ["C", q.option_c],
+                  ["D", q.option_d]
+                ].map(([letter, text]) => (
+                  <button
+                    key={letter}
+                    type="button"
+                    className={`option-card-btn ${answers[q.id] === letter ? "selected" : ""}`}
+                    onClick={() => selectOption(letter)}
+                    disabled={submitting}
+                  >
+                    <div className="option-left-wrap">
+                      <span className="option-key">{letter}</span>
+                      <span className="option-text-label">{text}</span>
+                    </div>
+                    {answers[q.id] === letter && <CheckCircle2 size={20} color="var(--primary-600)" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="question-footer-nav">
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={currentQuestion === 0 || submitting}
+                onClick={() => setCurrentQuestion((prev) => prev - 1)}
+              >
+                <ArrowLeft size={16} /> Previous
+              </button>
+
+              <button
+                type="button"
+                className={`btn-bookmark ${flaggedQuestions[q.id] ? "bookmarked" : ""}`}
+                onClick={toggleBookmark}
+              >
+                <Flag size={16} /> {flaggedQuestions[q.id] ? "Bookmarked" : "Mark for Review"}
+              </button>
+
+              {currentQuestion < questions.length - 1 ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ width: "auto", padding: "0.65rem 1.25rem" }}
+                  disabled={submitting}
+                  onClick={() => setCurrentQuestion((prev) => prev + 1)}
+                >
+                  Next <ArrowRight size={16} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ width: "auto", padding: "0.65rem 1.25rem", background: "var(--accent-emerald)" }}
+                  disabled={submitting}
+                  onClick={() => {
+                    if (window.confirm(`You answered ${answeredCount} of ${questions.length} questions. Confirm submit?`)) {
+                      handleSubmitExam(false);
+                    }
+                  }}
+                >
+                  {submitting ? "Submitting..." : <>Submit Exam <FileCheck2 size={16} /></>}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <aside className="palette-sidebar">
+            <div className="palette-title">
+              <span>Question Palette</span>
+              <span className="badge badge-neutral">{answeredCount}/{questions.length} Answered</span>
+            </div>
+
+            <div className="palette-legend">
+              <div className="legend-item"><span className="legend-dot answered"></span> Answered</div>
+              <div className="legend-item"><span className="legend-dot unanswered"></span> Unanswered</div>
+              <div className="legend-item"><span className="legend-dot current"></span> Current</div>
+              <div className="legend-item"><span className="legend-dot flagged"></span> Bookmarked</div>
+            </div>
+
+            <div className="question-grid-numbers">
+              {questions.map((item, idx) => {
+                const isCurr = idx === currentQuestion;
+                const isAns = Boolean(answers[item.id]);
+                const isFlag = Boolean(flaggedQuestions[item.id]);
+
+                let cls = "num-btn";
+                if (isCurr) cls += " active";
+                else if (isFlag) cls += " flagged";
+                else if (isAns) cls += " answered";
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cls}
+                    onClick={() => setCurrentQuestion(idx)}
+                    disabled={submitting}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ marginTop: "auto", background: "var(--accent-rose)" }}
+              onClick={() => {
+                if (window.confirm("Submit examination now?")) handleSubmitExam(false);
+              }}
+            >
+              Finish & Submit
+            </button>
+          </aside>
+        </main>
+      </div>
+    );
+  }
+
+  // 6. RESULT PAGE
+  if (page === "result" && result) {
+    const isDisqualified = result.status === "disqualified" || result.status === "terminated" || result.is_malpractice;
+    const score = Number(result.score || 0);
+    const total = Number(result.total_questions || 30);
+    const percentage = Number(result.percentage || (total > 0 ? (score / total) * 100 : 0)).toFixed(1);
+
+    return (
+      <div className="app-container">
+        {renderNavbar()}
+        {renderToasts()}
+
+        <main className="result-page-layout">
+          <div className="result-hero-box">
+            {isDisqualified ? (
+              <>
+                <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--danger-bg)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
+                  <AlertTriangle size={36} />
+                </div>
+                <div className="badge badge-danger" style={{ marginBottom: "1rem" }}>DISQUALIFIED DUE TO MALPRACTICE</div>
+                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>Result Withheld</h1>
+                <p style={{ color: "var(--text-secondary)", maxWidth: "540px", margin: "0 auto 1.5rem" }}>
+                  Your exam session recorded security policy violations ({result.malpractice_reason || "Tab switching / copy-paste"}). No score was calculated.
+                </p>
+
+                <div className="audit-metrics-row">
+                  <div className="audit-card">
+                    <span>Tab Switches</span>
+                    <strong>{result.tab_switch_count ?? tabSwitches}</strong>
+                  </div>
+                  <div className="audit-card">
+                    <span>Copy-Paste Logs</span>
+                    <strong>{result.copy_paste_count ?? (copyAttempts + pasteAttempts)}</strong>
+                  </div>
+                  <div className="audit-card">
+                    <span>Account Status</span>
+                    <strong style={{ color: "var(--danger-text)", fontSize: "1rem" }}>1-Hour Lockdown Active</strong>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="score-radial-gauge">
+                  <svg className="score-ring-circle" viewBox="0 0 120 120">
+                    <circle className="score-ring-bg" cx="60" cy="60" r="50" />
+                    <circle
+                      className="score-ring-val"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      style={{
+                        strokeDasharray: 314,
+                        strokeDashoffset: 314 - (314 * percentage) / 100
+                      }}
+                    />
+                  </svg>
+                  <div className="score-radial-text">
+                    <strong>{percentage}%</strong>
+                    <span>Score</span>
+                  </div>
+                </div>
+
+                <div className="badge badge-success" style={{ marginBottom: "1rem" }}><CheckCircle2 size={14} /> EXAM SUBMITTED</div>
+                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{result.exam_title || "Aptitude Test"}</h1>
+                <p style={{ color: "var(--text-secondary)" }}>Great job, {result.student_name || user?.name}! Your performance audit is ready.</p>
+
+                <div className="audit-metrics-row">
+                  <div className="audit-card">
+                    <span>Marks Obtained</span>
+                    <strong>{score} / {total}</strong>
+                  </div>
+                  <div className="audit-card">
+                    <span>Percentage</span>
+                    <strong>{percentage}%</strong>
+                  </div>
+                  <div className="audit-card">
+                    <span>Question Set</span>
+                    <strong>Set {result.question_set || "A"}</strong>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "2rem" }}>
+              <button type="button" className="btn-outline" onClick={() => window.print()}>
+                Print Report
+              </button>
+              <button type="button" className="btn-primary" style={{ width: "auto" }} onClick={() => setPage("dashboard")}>
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // 7. ADMIN DASHBOARD & MANAGEMENT
+  if (page.startsWith("admin")) {
+    const filteredStudents = adminStudents.filter(s =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const filteredExams = adminExams.filter(e =>
+      e.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const filteredAttempts = adminAttempts.filter(a =>
+      (a.student_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.student_email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.exam_title || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return (
+      <div className="app-container">
+        {renderNavbar()}
+        {renderToasts()}
+
+        <main className="admin-layout">
+          <div className="admin-header-row">
+            <div>
+              <div className="badge badge-neutral" style={{ marginBottom: "0.5rem" }}>ADMINISTRATOR PANEL</div>
+              <h1 style={{ fontSize: "1.875rem" }}>Control Center</h1>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button type="button" className={`btn-outline ${page === "admin-dashboard" ? "active" : ""}`} onClick={() => setPage("admin-dashboard")}>
+                Dashboard
+              </button>
+              <button type="button" className={`btn-outline ${page === "admin-students" ? "active" : ""}`} onClick={() => { setPage("admin-students"); loadAdminStudents(); }}>
+                Students
+              </button>
+              <button type="button" className={`btn-outline ${page === "admin-exams" ? "active" : ""}`} onClick={() => { setPage("admin-exams"); loadAdminExams(); }}>
+                Exams
+              </button>
+              <button type="button" className={`btn-outline ${page === "admin-reports" ? "active" : ""}`} onClick={() => { setPage("admin-reports"); loadAdminAttempts(); }}>
+                Attempt Reports
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-stats-grid">
+            <div className="admin-stat-card">
+              <div className="admin-stat-icon-wrap"><GraduationCap size={22} /></div>
+              <div><span>Total Students</span><strong>{adminStats.total_students}</strong></div>
+            </div>
+
+            <div className="admin-stat-card">
+              <div className="admin-stat-icon-wrap"><ClipboardCheck size={22} /></div>
+              <div><span>Total Exams</span><strong>{adminStats.total_exams}</strong></div>
+            </div>
+
+            <div className="admin-stat-card">
+              <div className="admin-stat-icon-wrap"><MonitorCheck size={22} /></div>
+              <div><span>Active Exams</span><strong>{adminStats.active_exams}</strong></div>
+            </div>
+
+            <div className="admin-stat-card">
+              <div className="admin-stat-icon-wrap"><BarChart3 size={22} /></div>
+              <div><span>Total Attempts</span><strong>{adminStats.total_attempts}</strong></div>
+            </div>
+
+            <div className="admin-stat-card">
+              <div className={`admin-stat-icon-wrap ${adminStats.total_violations > 0 ? "danger" : ""}`}><AlertTriangle size={22} /></div>
+              <div><span>Violations Flagged</span><strong style={{ color: adminStats.total_violations > 0 ? "var(--danger-text)" : "inherit" }}>{adminStats.total_violations}</strong></div>
+            </div>
+          </div>
+
+          {/* ADMIN SUB-PAGE: STUDENTS */}
+          {page === "admin-students" && (
+            <div className="admin-table-container">
+              <div className="table-toolbar">
+                <div className="search-input-wrap">
+                  <Search size={16} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search students by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <button type="button" className="btn-primary" style={{ width: "auto" }} onClick={() => { setEditingStudentId(null); setStudentForm({ name: "", email: "", phone: "", password: "" }); }}>
+                  <Plus size={16} /> Add Student
+                </button>
+              </div>
+
+              <div style={{ padding: "1.5rem", borderBottom: "1px solid var(--border-light)", background: "var(--bg-card-secondary)" }}>
+                <form onSubmit={saveStudent} style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr) auto", gap: "0.75rem", alignItems: "center" }}>
+                  <input type="text" className="input-field" placeholder="Student Name" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} required />
+                  <input type="email" className="input-field" placeholder="Email" value={studentForm.email} onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })} required />
+                  <input type="tel" className="input-field" placeholder="Phone" value={studentForm.phone} onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })} />
+                  {!editingStudentId && <input type="password" className="input-field" placeholder="Password" value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} required />}
+                  <button type="submit" className="btn-primary" style={{ width: "auto" }} disabled={adminFormLoading}>
+                    {editingStudentId ? "Update" : "Save"}
+                  </button>
+                </form>
+              </div>
+
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Student Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.length === 0 ? (
+                    <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No students registered.</td></tr>
+                  ) : (
+                    filteredStudents.map((s) => (
+                      <tr key={s.id}>
+                        <td>#{s.id}</td>
+                        <td><strong>{s.name}</strong></td>
+                        <td>{s.email}</td>
+                        <td>{s.phone || "N/A"}</td>
+                        <td>{s.created_at ? new Date(s.created_at).toLocaleDateString() : "N/A"}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button type="button" className="btn-outline" style={{ padding: "0.3rem 0.6rem" }} onClick={() => { setEditingStudentId(s.id); setStudentForm({ name: s.name, email: s.email, phone: s.phone || "", password: "" }); }}>
+                              <Edit3 size={14} />
+                            </button>
+                            <button type="button" className="nav-btn nav-btn-danger" style={{ padding: "0.3rem 0.6rem" }} onClick={() => deleteStudent(s.id)}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ADMIN SUB-PAGE: EXAMS */}
+          {page === "admin-exams" && (
+            <div className="admin-table-container">
+              <div className="table-toolbar">
+                <div className="search-input-wrap">
+                  <Search size={16} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search exams..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ padding: "1.5rem", borderBottom: "1px solid var(--border-light)", background: "var(--bg-card-secondary)" }}>
+                <form onSubmit={saveExam} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: "0.75rem", alignItems: "center" }}>
+                  <input type="text" className="input-field" placeholder="Exam Title" value={examForm.title} onChange={(e) => setExamForm({ ...examForm, title: e.target.value })} required />
+                  <input type="number" className="input-field" placeholder="Questions" value={examForm.total_questions} onChange={(e) => setExamForm({ ...examForm, total_questions: e.target.value })} required />
+                  <input type="number" className="input-field" placeholder="Duration (mins)" value={examForm.duration_minutes} onChange={(e) => setExamForm({ ...examForm, duration_minutes: e.target.value })} required />
+                  <select className="input-field" value={examForm.is_active} onChange={(e) => setExamForm({ ...examForm, is_active: Number(e.target.value) })}>
+                    <option value={1}>Active</option>
+                    <option value={0}>Inactive</option>
+                  </select>
+                  <button type="submit" className="btn-primary" style={{ width: "auto" }} disabled={adminFormLoading}>
+                    {editingExamId ? "Update Exam" : "Create Exam"}
+                  </button>
+                </form>
+              </div>
+
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Questions</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredExams.map((e) => (
+                    <tr key={e.id}>
+                      <td>#{e.id}</td>
+                      <td><strong>{e.title}</strong></td>
+                      <td>{e.total_questions}</td>
+                      <td>{e.duration_minutes} mins</td>
+                      <td>
+                        <span className={`badge ${Number(e.is_active) ? "badge-success" : "badge-neutral"}`}>
+                          {Number(e.is_active) ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td>{e.created_at ? new Date(e.created_at).toLocaleDateString() : "N/A"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ADMIN SUB-PAGE: ATTEMPT REPORTS */}
+          {page === "admin-reports" && (
+            <div className="admin-table-container">
+              <div className="table-toolbar">
+                <div className="search-input-wrap">
+                  <Search size={16} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search candidate name or exam..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                <button type="button" className="btn-primary" style={{ width: "auto" }} onClick={exportAttemptsCSV}>
+                  <Download size={16} /> Export Reports CSV
+                </button>
+              </div>
+
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Attempt ID</th>
+                    <th>Student Name</th>
+                    <th>Exam Title</th>
+                    <th>Set</th>
+                    <th>Score</th>
+                    <th>Percentage</th>
+                    <th>Tab Switches</th>
+                    <th>Copy/Paste</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAttempts.length === 0 ? (
+                    <tr><td colSpan={10} style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No attempt records found.</td></tr>
+                  ) : (
+                    filteredAttempts.map((a) => (
+                      <tr key={a.attempt_id}>
+                        <td>#{a.attempt_id}</td>
+                        <td>
+                          <strong>{a.student_name}</strong>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>{a.student_email}</span>
+                        </td>
+                        <td>{a.exam_title}</td>
+                        <td><span className="badge badge-neutral">Set {a.question_set}</span></td>
+                        <td>{a.score}/{a.total_questions}</td>
+                        <td><strong>{Number(a.percentage || 0).toFixed(1)}%</strong></td>
+                        <td>
+                          {(a.tab_switch_count || 0) > 0 ? (
+                            <span className="badge badge-danger"><AlertTriangle size={12} /> {a.tab_switch_count} Switches</span>
+                          ) : (
+                            <span className="badge badge-success"><Check size={12} /> 0</span>
+                          )}
+                        </td>
+                        <td>
+                          {(a.copy_paste_count || 0) > 0 ? (
+                            <span className="badge badge-danger"><AlertTriangle size={12} /> {a.copy_paste_count} Copy/Paste</span>
+                          ) : (
+                            <span className="badge badge-success"><Check size={12} /> 0</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`badge ${a.status === "disqualified" ? "badge-danger" : "badge-success"}`}>
+                            {a.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: "0.4rem" }}>
+                            {a.status !== "disqualified" && (
+                              <button type="button" className="nav-btn nav-btn-danger" style={{ padding: "0.3rem 0.5rem", fontSize: "0.75rem" }} onClick={() => cancelAttemptAdmin(a.attempt_id)}>
+                                Disqualify
+                              </button>
+                            )}
+                            {a.malpractice_reason && (
+                              <button type="button" className="btn-outline" style={{ padding: "0.3rem 0.5rem", fontSize: "0.75rem" }} onClick={() => clearAttemptFlagAdmin(a.attempt_id)}>
+                                Clear Flag
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function Feature({
-  icon,
-  title,
-  text,
-}) {
-  return (
-    <div className="feature-item">
-      <div className="feature-icon">
-        {icon}
-      </div>
-
-      <div>
-        <h3>{title}</h3>
-        <p>{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function Stat({
-  icon,
-  value,
-  label,
-}) {
-  return (
-    <div className="stat-card">
-      <div className="stat-icon">
-        {icon}
-      </div>
-
-      <div className="stat-content">
-        <div className="stat-value">
-          {value}
-        </div>
-
-        <div className="stat-label">
-          {label}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
-
-
-
-
-
-

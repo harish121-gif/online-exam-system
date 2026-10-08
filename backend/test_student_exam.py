@@ -1,121 +1,65 @@
 import requests
-
+import json
 
 BASE_URL = "http://127.0.0.1:5000"
-
 session = requests.Session()
 
-
-# =====================================================
 # 1. STUDENT LOGIN
-# =====================================================
-
 login_response = session.post(
     f"{BASE_URL}/api/student/login",
     json={
-        "email": "student1@exam.com",
+        "email": "harishpro14@gmail.com",
+
         "password": "student123"
     }
 )
 
 print("\n================ STUDENT LOGIN ================")
 print("Status:", login_response.status_code)
-print(login_response.json())
-
+print(json.dumps(login_response.json(), ensure_ascii=True))
 
 if not login_response.ok:
     print("\nStudent login failed.")
-    print("Check the student password/hash in MySQL.")
     exit()
 
-
-# =====================================================
-# 2. GET EXAM DETAILS
-# =====================================================
-
-exam_response = session.get(
-    f"{BASE_URL}/api/exam/1"
+# 2. START EXAM
+start_response = session.post(
+    f"{BASE_URL}/api/exam/2/start"
 )
 
-print("\n================ EXAM DETAILS ================")
-print("Status:", exam_response.status_code)
-print(exam_response.json())
+print("\n================ START EXAM ================")
+print("Status:", start_response.status_code)
+print(json.dumps(start_response.json(), ensure_ascii=True)[:300])
 
-
-if not exam_response.ok:
-    print("\nUnable to load exam.")
+if not start_response.ok:
+    print("\nUnable to start exam.")
     exit()
 
+start_data = start_response.json()
+attempt_id = start_data.get("attempt_id")
+questions = start_data.get("questions", [])
 
-# =====================================================
-# 3. GET SET A QUESTIONS
-# =====================================================
+print(f"\nAttempt ID: {attempt_id}, Questions: {len(questions)}")
 
-questions_response = session.get(
-    f"{BASE_URL}/api/exam/1/questions",
-    params={
-        "set": "A"
-    }
-)
-
-print("\n================ EXAM QUESTIONS ================")
-print("Status:", questions_response.status_code)
-print(questions_response.json())
-
-
-if not questions_response.ok:
-    print("\nUnable to load questions.")
-    exit()
-
-
-questions_data = questions_response.json()
-
-questions = questions_data.get("questions", [])
-
-print("\nNumber of questions received:", len(questions))
-
-
-# =====================================================
-# 4. CHECK SECURITY
-# correct_option MUST NOT be visible
-# =====================================================
-
+# 3. CHECK SECURITY
 if questions:
-
-    first_question = questions[0]
-
-    print("\n================ FIRST QUESTION ================")
-    print(first_question)
-
-    if "correct_option" in first_question:
+    first_q = questions[0]
+    if "correct_option" in first_q:
         print("\nWARNING: correct_option is exposed!")
     else:
-        print("\nGOOD: correct_option is NOT exposed.")
+        print("\nGOOD: correct_option is NOT exposed to student.")
 
-
-# =====================================================
-# 5. SUBMIT TEST ANSWERS
-# =====================================================
-
-answers = {}
-
-for question in questions:
-
-    question_id = str(question["id"])
-
-    # For testing only:
-    # Select option B for every question.
-    answers[question_id] = "B"
-
+# 4. SUBMIT ANSWERS
+answers = {str(q["id"]): "B" for q in questions}
 
 submit_response = session.post(
-    f"{BASE_URL}/api/exam/1/submit",
+    f"{BASE_URL}/api/exam/2/submit",
     json={
-        "question_set": "A",
+        "attempt_id": attempt_id,
         "answers": answers
     }
 )
 
 print("\n================ EXAM SUBMISSION ================")
 print("Status:", submit_response.status_code)
-print(submit_response.json())
+print(json.dumps(submit_response.json(), ensure_ascii=True))

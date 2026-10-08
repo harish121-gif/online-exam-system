@@ -343,6 +343,12 @@ def create_app():
 
     @app.route("/<path:path>")
     def serve_react(path):
+        if path.startswith("api/"):
+            return jsonify({
+                "success": False,
+                "message": f"API endpoint '/{path}' not found"
+            }), 404
+
         file_path = os.path.join(FRONTEND_DIST, path)
 
         if os.path.isfile(file_path):
@@ -353,6 +359,7 @@ def create_app():
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         return response
+
 
 
     return app
