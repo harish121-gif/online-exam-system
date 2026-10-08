@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
@@ -39,7 +40,16 @@ class Config:
         "http://127.0.0.1:5174",
         "http://localhost:5175",
         "http://127.0.0.1:5175",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
         "https://examsecure-frontend.onrender.com",
         "https://online-exam-secure.onrender.com",
-        r"https://.*\.onrender\.com"
+        re.compile(r"https://.*\.onrender\.com"),
+        re.compile(r"https://.*\.vercel\.app"),
+        re.compile(r"https://.*\.netlify\.app"),
+        re.compile(r"https://.*\.github\.io"),
+        re.compile(r".*")
     ]
+

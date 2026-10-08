@@ -225,9 +225,10 @@ function App() {
       });
       const data = await response.json();
       if (response.ok && data.success && Array.isArray(data.exams)) {
-        const activeExam = data.exams.find(
-          (e) => String(e.id) === String(EXAM_ID) || Boolean(e.is_active)
-        );
+        const activeExam =
+          data.exams.find((e) => Number(e.is_active) === 1) ||
+          data.exams.find((e) => String(e.id) === String(EXAM_ID)) ||
+          data.exams[0];
         if (activeExam) {
           setExam(activeExam);
         }
@@ -659,8 +660,8 @@ function App() {
     setMessage("");
 
     try {
-      const targetExamId = exam?.id || EXAM_ID;
-      const response = await fetch(`${API_URL}/exam/${targetExamId}/start`, {
+      let targetExamId = exam?.id || EXAM_ID;
+      let response = await fetch(`${API_URL}/exam/${targetExamId}/start`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -669,7 +670,36 @@ function App() {
         credentials: "include",
       });
 
-      const data = await response.json();
+      let data = await response.json();
+
+      // If initial targetExamId was not found (404), fetch active exam list and retry
+      if (response.status === 404) {
+        try {
+          const listRes = await fetch(`${API_URL}/exam/`, {
+            headers: { ...getAuthHeaders(user) },
+            credentials: "include"
+          });
+          const listData = await listRes.json();
+          if (listRes.ok && listData.success && Array.isArray(listData.exams)) {
+            const active = listData.exams.find(e => Number(e.is_active) === 1) || listData.exams[0];
+            if (active && String(active.id) !== String(targetExamId)) {
+              targetExamId = active.id;
+              setExam(active);
+              response = await fetch(`${API_URL}/exam/${targetExamId}/start`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  ...getAuthHeaders(user),
+                },
+                credentials: "include",
+              });
+              data = await response.json();
+            }
+          }
+        } catch (retryErr) {
+          console.error("RETRY ACTIVE EXAM ERROR:", retryErr);
+        }
+      }
 
       if (response.ok && data.success) {
         setExam(data.exam);

@@ -209,6 +209,27 @@ def start_exam(exam_id):
 
             existing_attempt = cursor.fetchone()
 
+            if existing_attempt:
+                # Check if existing attempt is stale (started > duration_minutes + 15 mins ago)
+                cursor.execute("""
+                    SELECT TIMESTAMPDIFF(MINUTE, start_time, NOW()) AS mins_elapsed
+                    FROM exam_attempt
+                    WHERE id = %s
+                """, (existing_attempt["id"],))
+                elapsed_row = cursor.fetchone()
+                mins_elapsed = elapsed_row.get("mins_elapsed") if elapsed_row else 0
+                max_allowed = (exam.get("duration_minutes") or 30) + 15
+
+                if mins_elapsed and mins_elapsed > max_allowed:
+                    # Finalize stale abandoned attempt
+                    cursor.execute("""
+                        UPDATE exam_attempt
+                        SET status = 'submitted', end_time = NOW()
+                        WHERE id = %s
+                    """, (existing_attempt["id"],))
+                    connection.commit()
+                    existing_attempt = None
+
             # ------------------------------------------------
             # GET AVAILABLE QUESTION SETS
             # ------------------------------------------------
@@ -248,20 +269,13 @@ def start_exam(exam_id):
 
                 # ------------------------------------------------
                 # ASSIGN QUESTION SET
-                #
-                # Student 1 -> A
-                # Student 2 -> B
-                # Student 3 -> C
-                # Student 4 -> D
-                # Student 5 -> A
                 # ------------------------------------------------
 
                 set_index = (student_id - 1) % len(sets)
-
                 assigned_set = sets[set_index]
 
                 # ------------------------------------------------
-                # CHECK QUESTIONS
+                # CHECK QUESTIONS & FALLBACK IF SET IS EMPTY
                 # ------------------------------------------------
 
                 cursor.execute("""
@@ -276,6 +290,18 @@ def start_exam(exam_id):
                 ))
 
                 question_count = cursor.fetchone()
+
+                if not question_count or question_count["question_count"] == 0:
+                    for fallback_set in sets:
+                        cursor.execute("""
+                            SELECT COUNT(*) AS cnt
+                            FROM question
+                            WHERE exam_id = %s AND question_set = %s
+                        """, (exam_id, fallback_set))
+                        fc = cursor.fetchone()
+                        if fc and fc["cnt"] > 0:
+                            assigned_set = fallback_set
+                            break
 
                 if (
                     not question_count

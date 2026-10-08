@@ -76,7 +76,7 @@ def get_current_student_id():
     user_id_hdr = request.headers.get("X-User-Id")
     user_role_hdr = request.headers.get("X-User-Role", "student")
 
-    if user_id_hdr and user_role_hdr == "student":
+    if user_id_hdr and (not user_role_hdr or str(user_role_hdr).lower() == "student"):
         try:
             return int(user_id_hdr)
         except (ValueError, TypeError):
@@ -103,7 +103,7 @@ def get_current_admin_id():
     user_id_hdr = request.headers.get("X-User-Id")
     user_role_hdr = request.headers.get("X-User-Role")
 
-    if user_id_hdr and user_role_hdr == "admin":
+    if user_id_hdr and user_role_hdr and str(user_role_hdr).lower() == "admin":
         try:
             return int(user_id_hdr)
         except (ValueError, TypeError):
