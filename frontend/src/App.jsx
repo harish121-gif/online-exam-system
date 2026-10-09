@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   ShieldCheck, Mail, LockKeyhole, UserRound, Phone,
-  Info, CheckCircle2, ClipboardCheck, Clock3, Shuffle,
+  Info, CheckCircle2, CircleCheck, ClipboardCheck, Clock3, Shuffle,
   BarChart3, LogOut, ArrowLeft, ArrowRight, Play,
   Timer, AlertTriangle, MonitorCheck,
   FileCheck2, GraduationCap, Wifi, EyeOff, Eye,
   Sun, Moon, Search, Plus, Trash2, Edit3, Flag,
-  Download, X, Check
+  Download, X, Check, User, BookOpen
 } from "lucide-react";
 import "./App.css";
 
@@ -1812,100 +1812,420 @@ function App() {
     );
   }
 
-  // 6. RESULT PAGE
+  // 6. RESULT PAGE (OLDER VERSION UI)
   if (page === "result") {
     const res = result || {};
     const isDisqualified = res.status === "disqualified" || res.status === "terminated" || res.is_malpractice;
+
+    if (isDisqualified) {
+      return (
+        <div className="dashboard-page result-page malpractice-terminated-page">
+          <header className="top-header result-header" style={{ background: '#7f1d1d', borderColor: '#991b1b' }}>
+            <div className="brand" style={{ color: '#ffffff' }}>
+              <ShieldCheck size={22} color="#fca5a5" />
+              <strong style={{ color: '#ffffff' }}>ExamSecure Security Engine</strong>
+            </div>
+            <div className="header-user" style={{ color: '#fecaca' }}>
+              {res.student_name || user?.name || "Student"}
+            </div>
+            <button
+              className="logout-button"
+              style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer' }}
+              onClick={() => setPage("dashboard")}
+            >
+              Back to Portal
+            </button>
+          </header>
+
+          <main className="result-main">
+            <div className="result-container">
+              <div className="malpractice-alert-hero">
+                <div className="malpractice-alert-icon">
+                  <AlertTriangle size={42} color="#dc2626" />
+                </div>
+                <div className="malpractice-alert-badge">
+                  EXAM COMPLETED - DISQUALIFIED DUE TO MALPRACTICE
+                </div>
+                <h1>Examination Disqualified</h1>
+                <p className="malpractice-subtitle">
+                  You have completed and submitted your examination. However, because malpractice activity (Copy/Paste or Tab Switch) was detected during your exam session, no score or result was generated.
+                </p>
+              </div>
+
+              <div className="malpractice-details-card">
+                <div className="malpractice-reason-box">
+                  <h3>
+                    <ShieldCheck size={20} /> Detected Malpractice Activity
+                  </h3>
+                  <div className="reason-text">
+                    <strong>Violation Reason: </strong> {res.malpractice_reason || "Tab Switching / Copy & Paste activity detected during examination"}
+                  </div>
+                </div>
+
+                <div className="malpractice-stats-grid">
+                  <div className="mal-stat-card">
+                    <span>Tab Switch Log</span>
+                    <strong>{res.tab_switch_count ?? tabSwitches ?? 0} Switches</strong>
+                  </div>
+                  <div className="mal-stat-card">
+                    <span>Copy/Paste Log</span>
+                    <strong>{res.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0} Attempts</strong>
+                  </div>
+                  <div className="mal-stat-card danger">
+                    <span>Result Status</span>
+                    <strong>NO RESULT GENERATED</strong>
+                  </div>
+                </div>
+
+                <div className="candidate-info-block">
+                  <h4>Candidate & Examination Information</h4>
+                  <div className="candidate-row">
+                    <span>Candidate Name</span>
+                    <strong>{res.student_name || user?.name || "Student"}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Email Address</span>
+                    <strong>{res.student_email || user?.email || "student@exam.com"}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Examination</span>
+                    <strong>{res.exam_title || exam?.title || "Aptitude Test"}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Question Set</span>
+                    <strong>{res.question_set || "A"}</strong>
+                  </div>
+                  <div className="candidate-row">
+                    <span>Final Evaluation Status</span>
+                    <strong className="status-disqualified">🛑 DISQUALIFIED (SCORE: 0 / NO RESULT GENERATED)</strong>
+                  </div>
+                </div>
+
+                <div className="malpractice-policy-notice" style={{ background: '#fff1f2', border: '1px solid #fca5a5' }}>
+                  <AlertTriangle size={22} style={{ flexShrink: 0, color: '#dc2626' }} />
+                  <div>
+                    <strong style={{ color: '#991b1b', display: 'block', marginBottom: '4px' }}>🛑 1-Hour Account Lockdown Active:</strong>
+                    <p style={{ color: '#7f1d1d', margin: 0 }}>
+                      As per examination rules, your account is locked from attempting or starting this examination for <strong>1 HOUR</strong> from the time of disqualification.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  className="result-back-button danger-button"
+                  onClick={() => setPage("dashboard")}
+                  style={{ width: '100%', padding: '16px', fontSize: '16px', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  Return to Student Portal
+                </button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const percentage = Number(res.percentage || (res.total_questions > 0 ? (res.score / res.total_questions) * 100 : 0)).toFixed(1);
     const score = Number(res.score || 0);
     const total = Number(res.total_questions || 30);
-    const percentage = Number(res.percentage || (total > 0 ? (score / total) * 100 : 0)).toFixed(1);
+
+    let performance = "Needs Improvement";
+    if (Number(percentage) >= 80) {
+      performance = "Excellent Performance";
+    } else if (Number(percentage) >= 60) {
+      performance = "Good Performance";
+    } else if (Number(percentage) >= 40) {
+      performance = "Average Performance";
+    }
 
     return (
-      <div className="app-container">
-        {renderNavbar()}
-        {renderToasts()}
+      <div className="app result-page">
 
-        <main className="result-page-layout">
-          <div className="result-hero-box">
-            {isDisqualified ? (
-              <>
-                <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--danger-bg)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem" }}>
-                  <AlertTriangle size={36} />
-                </div>
-                <div className="badge badge-danger" style={{ marginBottom: "1rem" }}>DISQUALIFIED DUE TO MALPRACTICE</div>
-                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>Result Withheld</h1>
-                <p style={{ color: "var(--text-secondary)", maxWidth: "540px", margin: "0 auto 1.5rem" }}>
-                  Your exam session recorded security policy violations ({res.malpractice_reason || "Tab switching / copy-paste"}). No score was calculated.
-                </p>
+        {/* HEADER */}
+        <header className="top-header result-header">
 
-                <div className="audit-metrics-row">
-                  <div className="audit-card">
-                    <span>Tab Switches</span>
-                    <strong>{res.tab_switch_count ?? tabSwitches}</strong>
+          <div className="brand">
+            <span className="brand-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <path d="M12 3l8 4v5c0 4.5-3.4 7.9-8 9-4.6-1.1-8-4.5-8-9V7l8-4z"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+            </span>
+            <strong>ExamSecure</strong>
+          </div>
+
+          <div className="header-user">
+            <span className="user-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <circle cx="12" cy="8" r="3.5"/>
+                <path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/>
+              </svg>
+            </span>
+            {res.student_name || user?.name || "Student"}
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={() => setPage("dashboard")}
+            style={{ cursor: 'pointer' }}
+          >
+            Dashboard
+          </button>
+
+        </header>
+
+        {/* RESULT CONTENT */}
+        <main className="result-main">
+
+          <div className="result-container">
+
+            {/* PAGE TITLE */}
+            <div className="result-title-section">
+
+              <div className="result-label">
+                EXAMINATION RESULT
+              </div>
+
+              <h1>
+                Your Examination is Complete
+              </h1>
+
+              <p>
+                Here is a summary of your examination performance.
+              </p>
+
+            </div>
+
+            {/* HERO RESULT CARD */}
+            <section className="result-hero-card">
+
+              <div className="result-hero-left">
+
+                <div className="success-icon"><CircleCheck size={30} strokeWidth={2.2} /></div>
+
+                <div>
+                  <div className="completed-badge">
+                    EXAM COMPLETED
                   </div>
-                  <div className="audit-card">
-                    <span>Copy-Paste Logs</span>
-                    <strong>{res.copy_paste_count ?? (copyAttempts + pasteAttempts)}</strong>
-                  </div>
-                  <div className="audit-card">
-                    <span>Account Status</span>
-                    <strong style={{ color: "var(--danger-text)", fontSize: "1rem" }}>1-Hour Lockdown Active</strong>
-                  </div>
+
+                  <h2>
+                    {res.exam_title || exam?.title || "Aptitude Test"}
+                  </h2>
+
+                  <p>
+                    Well done, {res.student_name || user?.name || "Candidate"}!
+                    Your examination has been successfully submitted.
+                  </p>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="score-radial-gauge">
-                  <svg className="score-ring-circle" viewBox="0 0 120 120">
-                    <circle className="score-ring-bg" cx="60" cy="60" r="50" />
+
+              </div>
+
+              <div className="question-set-badge">
+                <span>QUESTION SET</span>
+                <strong>Set {res.question_set || "A"}</strong>
+              </div>
+
+            </section>
+
+            {/* SCORE AREA */}
+            <section className="score-dashboard">
+
+              <div className="score-card main-score-card">
+
+                <div className="score-circle">
+
+                  <svg
+                    className="score-ring"
+                    viewBox="0 0 120 120"
+                  >
                     <circle
-                      className="score-ring-val"
+                      className="score-ring-bg"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                    />
+
+                    <circle
+                      className="score-ring-progress"
                       cx="60"
                       cy="60"
                       r="50"
                       style={{
                         strokeDasharray: 314,
-                        strokeDashoffset: 314 - (314 * percentage) / 100
+                        strokeDashoffset:
+                          314 - (314 * Number(percentage)) / 100
                       }}
                     />
                   </svg>
-                  <div className="score-radial-text">
+
+                  <div className="score-circle-content">
                     <strong>{percentage}%</strong>
                     <span>Score</span>
                   </div>
+
                 </div>
 
-                <div className="badge badge-success" style={{ marginBottom: "1rem" }}><CheckCircle2 size={14} /> EXAM SUBMITTED</div>
-                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{res.exam_title || "Aptitude Test"}</h1>
-                <p style={{ color: "var(--text-secondary)" }}>Great job, {res.student_name || user?.name}! Your performance audit is ready.</p>
+                <div className="score-main-text">
 
-                <div className="audit-metrics-row">
-                  <div className="audit-card">
-                    <span>Marks Obtained</span>
-                    <strong>{score} / {total}</strong>
+                  <span className="score-small-label">
+                    YOUR SCORE
+                  </span>
+
+                  <h2>
+                    {score}
+                    <span> / {total}</span>
+                  </h2>
+
+                  <div className="performance-badge">
+                    {performance}
                   </div>
-                  <div className="audit-card">
-                    <span>Percentage</span>
-                    <strong>{percentage}%</strong>
-                  </div>
-                  <div className="audit-card">
-                    <span>Question Set</span>
-                    <strong>Set {res.question_set || "A"}</strong>
+
+                </div>
+
+              </div>
+
+              <div className="score-card">
+
+                <div className="score-card-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                    <path d="M4 5h16v14H4z"/>
+                    <path d="M8 9h8M8 13h5"/>
+                  </svg>
+                </div>
+
+                <span className="score-card-label">
+                  TOTAL QUESTIONS
+                </span>
+
+                <strong>
+                  {total}
+                </strong>
+
+                <p>
+                  Questions evaluated
+                </p>
+
+              </div>
+
+              <div className="score-card">
+
+                <div className="score-card-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                </div>
+
+                <span className="score-card-label">
+                  PERCENTAGE
+                </span>
+
+                <strong>
+                  {percentage}%
+                </strong>
+
+                <p>
+                  Overall performance
+                </p>
+
+              </div>
+
+            </section>
+
+            {/* DETAILS */}
+            <section className="result-details-grid">
+
+              <div className="result-info-card">
+
+                <div className="info-card-heading">
+                  <span className="info-icon" aria-hidden="true">
+                    <User size={20} color="#2563eb" />
+                  </span>
+
+                  <div>
+                    <h3>Student Details</h3>
+                    <p>Candidate information</p>
                   </div>
                 </div>
-              </>
-            )}
 
-            <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "2rem" }}>
-              <button type="button" className="btn-outline" onClick={() => window.print()}>
-                Print Report
-              </button>
-              <button type="button" className="btn-primary" style={{ width: "auto" }} onClick={() => setPage("dashboard")}>
-                Return to Dashboard
-              </button>
+                <div className="info-row">
+                  <span>Student Name</span>
+                  <strong>{res.student_name || user?.name || "Student"}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Email</span>
+                  <strong>{res.student_email || user?.email || "student@exam.com"}</strong>
+                </div>
+
+              </div>
+
+              <div className="result-info-card">
+
+                <div className="info-card-heading">
+                  <span className="info-icon" aria-hidden="true">
+                    <BookOpen size={20} color="#2563eb" />
+                  </span>
+
+                  <div>
+                    <h3>Examination Details</h3>
+                    <p>Assessment information</p>
+                  </div>
+                </div>
+
+                <div className="info-row">
+                  <span>Exam</span>
+                  <strong>{res.exam_title || exam?.title || "Aptitude Test"}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Question Set</span>
+                  <strong>Set {res.question_set || "A"}</strong>
+                </div>
+
+                <div className="info-row">
+                  <span>Status</span>
+                  <strong className="status-success">
+                    <CircleCheck size={15} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> {res.status || "completed"}
+                  </strong>
+                </div>
+
+              </div>
+
+            </section>
+
+            {/* BOTTOM ACTION */}
+            <div className="result-action" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginTop: '24px' }}>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  className="result-back-button"
+                  onClick={() => window.print()}
+                  style={{ background: '#475569', cursor: 'pointer' }}
+                >
+                  Print Report
+                </button>
+                <button
+                  type="button"
+                  className="result-back-button"
+                  onClick={() => setPage("dashboard")}
+                  style={{ cursor: 'pointer' }}
+                >
+                  Return to Student Portal
+                </button>
+              </div>
+
+              <p>
+                Your examination result has been recorded successfully.
+              </p>
+
             </div>
+
           </div>
+
         </main>
+
       </div>
     );
   }
