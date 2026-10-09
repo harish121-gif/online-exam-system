@@ -12,18 +12,11 @@ import "./App.css";
 
 // API Base URL Resolution
 const getApiUrl = () => {
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1")
-  ) {
-    return "/api";
-  }
   const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.trim() !== "" && envUrl.trim() !== "/api") {
+  if (envUrl && envUrl.trim() !== "") {
     return envUrl.trim();
   }
-  return "https://online-exam-system-gzy3.onrender.com/api";
+  return "/api";
 };
 
 const API_URL = getApiUrl();
