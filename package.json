@@ -2,7 +2,7 @@
   "name": "online-exam-system-root",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
+    "build": "bash build.sh || ./build.sh || (cd frontend && npm install && npm run build)",
     "start": "gunicorn --chdir backend app:app"
   }
 }
