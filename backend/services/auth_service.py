@@ -84,10 +84,23 @@ def get_current_student_id():
 
     if request.is_json and request.get_json(silent=True):
         data = request.get_json(silent=True) or {}
-        if "student_id" in data:
+        if "student_id" in data and data["student_id"]:
             try:
                 return int(data["student_id"])
             except (ValueError, TypeError):
+                pass
+
+        attempt_id = data.get("attempt_id")
+        if attempt_id:
+            try:
+                from database import get_connection
+                conn = get_connection()
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT student_id FROM exam_attempts WHERE id = %s", (attempt_id,))
+                    row = cursor.fetchone()
+                    if row and row.get("student_id"):
+                        return int(row["student_id"])
+            except Exception:
                 pass
 
     return None

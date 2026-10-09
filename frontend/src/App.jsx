@@ -3157,6 +3157,7 @@ async function logout() {
 
     const payload = {
       attempt_id: attemptId,
+      student_id: user?.id,
       answers: answerList,
       tab_switches: tabSwitches,
       copy_attempts: copyAttempts,
@@ -3182,6 +3183,7 @@ async function logout() {
 
           headers: {
             "Content-Type": "application/json",
+            ...getAuthHeaders(user),
           },
 
           credentials: "include",
