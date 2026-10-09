@@ -1813,11 +1813,12 @@ function App() {
   }
 
   // 6. RESULT PAGE
-  if (page === "result" && result) {
-    const isDisqualified = result.status === "disqualified" || result.status === "terminated" || result.is_malpractice;
-    const score = Number(result.score || 0);
-    const total = Number(result.total_questions || 30);
-    const percentage = Number(result.percentage || (total > 0 ? (score / total) * 100 : 0)).toFixed(1);
+  if (page === "result") {
+    const res = result || {};
+    const isDisqualified = res.status === "disqualified" || res.status === "terminated" || res.is_malpractice;
+    const score = Number(res.score || 0);
+    const total = Number(res.total_questions || 30);
+    const percentage = Number(res.percentage || (total > 0 ? (score / total) * 100 : 0)).toFixed(1);
 
     return (
       <div className="app-container">
@@ -1834,17 +1835,17 @@ function App() {
                 <div className="badge badge-danger" style={{ marginBottom: "1rem" }}>DISQUALIFIED DUE TO MALPRACTICE</div>
                 <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>Result Withheld</h1>
                 <p style={{ color: "var(--text-secondary)", maxWidth: "540px", margin: "0 auto 1.5rem" }}>
-                  Your exam session recorded security policy violations ({result.malpractice_reason || "Tab switching / copy-paste"}). No score was calculated.
+                  Your exam session recorded security policy violations ({res.malpractice_reason || "Tab switching / copy-paste"}). No score was calculated.
                 </p>
 
                 <div className="audit-metrics-row">
                   <div className="audit-card">
                     <span>Tab Switches</span>
-                    <strong>{result.tab_switch_count ?? tabSwitches}</strong>
+                    <strong>{res.tab_switch_count ?? tabSwitches}</strong>
                   </div>
                   <div className="audit-card">
                     <span>Copy-Paste Logs</span>
-                    <strong>{result.copy_paste_count ?? (copyAttempts + pasteAttempts)}</strong>
+                    <strong>{res.copy_paste_count ?? (copyAttempts + pasteAttempts)}</strong>
                   </div>
                   <div className="audit-card">
                     <span>Account Status</span>
@@ -1875,8 +1876,8 @@ function App() {
                 </div>
 
                 <div className="badge badge-success" style={{ marginBottom: "1rem" }}><CheckCircle2 size={14} /> EXAM SUBMITTED</div>
-                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{result.exam_title || "Aptitude Test"}</h1>
-                <p style={{ color: "var(--text-secondary)" }}>Great job, {result.student_name || user?.name}! Your performance audit is ready.</p>
+                <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{res.exam_title || "Aptitude Test"}</h1>
+                <p style={{ color: "var(--text-secondary)" }}>Great job, {res.student_name || user?.name}! Your performance audit is ready.</p>
 
                 <div className="audit-metrics-row">
                   <div className="audit-card">
@@ -1889,7 +1890,7 @@ function App() {
                   </div>
                   <div className="audit-card">
                     <span>Question Set</span>
-                    <strong>Set {result.question_set || "A"}</strong>
+                    <strong>Set {res.question_set || "A"}</strong>
                   </div>
                 </div>
               </>
