@@ -269,9 +269,9 @@ function App() {
 
       const data = await response.json();
 
-      if (data.status === "terminated" || data.status === "malpractice" || data.is_malpractice || response.status === 403) {
+      if (data.status === "disqualified" || data.status === "terminated" || data.status === "malpractice" || data.is_malpractice || response.status === 403) {
         setResult({
-          status: "terminated",
+          status: data.status || "disqualified",
           is_malpractice: true,
           result_generated: false,
           malpractice_reason: data.malpractice_reason || data.message || "Malpractice activity detected during examination",
@@ -289,7 +289,7 @@ function App() {
         return;
       }
 
-      if (response.ok && data.success) {
+      if ((response.ok || data.status === "submitted" || data.success) && (data.success || data.score !== undefined)) {
         addToast(autoSubmit ? "Time expired. Examination auto-submitted." : "Examination submitted successfully!", "success");
 
         const total = data.total_questions || Object.keys(answers).length || 30;
@@ -311,14 +311,50 @@ function App() {
         setResult(data.result || resultData);
         setPage("result");
       } else {
+        // Fallback: fetch latest exam result from backend
+        try {
+          const resFetch = await fetch(`${API_URL}/exam/${exam?.id || EXAM_ID}/result`, {
+            headers: { ...getAuthHeaders(user) },
+            credentials: "include"
+          });
+          const resData = await resFetch.json();
+          if (resFetch.ok && resData.success && resData.result) {
+            setResult(resData.result);
+            setPage("result");
+            setSubmitting(false);
+            return;
+          }
+        } catch (fetchErr) {
+          console.error("FETCH RESULT FALLBACK ERROR:", fetchErr);
+        }
+
         setExamMessage(data.message || "Unable to submit examination.");
         addToast(data.message || "Submission failed", "error");
         setSubmitting(false);
       }
     } catch (error) {
       console.error("SUBMIT EXAM ERROR:", error);
+      // Fallback on network error: try fetching result
+      try {
+        const resFetch = await fetch(`${API_URL}/exam/${exam?.id || EXAM_ID}/result`, {
+          headers: { ...getAuthHeaders(user) },
+          credentials: "include"
+        });
+        const resData = await resFetch.json();
+        if (resFetch.ok && resData.success && resData.result) {
+          setResult(resData.result);
+          setPage("result");
+          setSubmitting(false);
+          return;
+        }
+      } catch (fetchErr) {
+        console.error("FETCH RESULT FALLBACK ERROR:", fetchErr);
+      }
+
       setExamMessage("Network error while submitting examination.");
       addToast("Network connection failed during submission", "error");
+    } finally {
+      setSubmitting(false);
     }
   }, [submitting, attemptId, user, answers, tabSwitches, copyAttempts, pasteAttempts, timeLeft, exam, questions, questionSet]);
 

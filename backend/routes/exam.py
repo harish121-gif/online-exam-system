@@ -621,16 +621,24 @@ def submit_exam(exam_id):
                 }), 403
 
             if attempt["status"] != "in_progress":
-
+                total_questions = attempt.get("total_questions", 30)
+                score = attempt.get("score", 0)
+                percentage = round((score / total_questions) * 100, 2) if total_questions > 0 else 0
                 return jsonify({
-                    "success": False,
-                    "message": (
-                        "This examination has already been submitted"
-                    ),
-                    "score": attempt["score"],
-                    "total_questions": attempt["total_questions"],
+                    "success": True,
+                    "message": "This examination has already been submitted",
+                    "attempt_id": attempt_id,
+                    "student_id": student_id,
+                    "student_name": attempt.get("student_name"),
+                    "student_email": attempt.get("student_email"),
+                    "exam_id": exam_id,
+                    "exam_title": attempt.get("exam_title"),
+                    "question_set": attempt.get("question_set", "A"),
+                    "score": score,
+                    "total_questions": total_questions,
+                    "percentage": percentage,
                     "status": attempt["status"]
-                }), 400
+                }), 200
 
             # ------------------------------------------------
             # MALPRACTICE CHECK ON SUBMISSION
