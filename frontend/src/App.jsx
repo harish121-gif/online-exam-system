@@ -2831,10 +2831,153 @@ async function logout() {
   // RESULT PAGE
   // =========================================================
 
-  if (page === "result" && result) {
-    const percentage = Number(result.percentage || 0);
-    const score = Number(result.score || 0);
-    const total = Number(result.total_questions || 0);
+  // =========================================================
+  // RESULT PAGE
+  // =========================================================
+
+  if (page === "result") {
+    const res = result || {};
+    const isDisqualified = res.status === "disqualified" || res.status === "terminated" || res.is_malpractice || (tabSwitches >= 3 || (copyAttempts + pasteAttempts) >= 3);
+
+    if (isDisqualified) {
+      const studentName = res.student_name || user?.name || "Student";
+      const studentEmail = res.student_email || user?.email || "student@exam.com";
+      const examTitle = res.exam_title || exam?.title || "Aptitude Test";
+      const qSet = res.question_set || questionSet || "A";
+      const tabLogs = res.tab_switch_count ?? tabSwitches ?? 0;
+      const copyPasteLogs = res.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0;
+      const reasonText = res.malpractice_reason || `Malpractice Detected: Tab Switching (${tabLogs} times) & Copy/Paste Activity (${copyPasteLogs} times)`;
+
+      return (
+        <div className="dashboard-page result-page malpractice-terminated-page">
+          <header className="top-header result-header" style={{ background: '#7f1d1d', borderColor: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 24px' }}>
+            <div className="brand" style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '700' }}>
+              <ShieldCheck size={22} color="#fca5a5" />
+              <strong>ExamSecure Security Engine</strong>
+            </div>
+            <div className="header-user" style={{ color: '#fecaca', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px' }}>
+              <span>{studentName}</span>
+              <button
+                type="button"
+                className="logout-button"
+                style={{ background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)', padding: '6px 14px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                onClick={() => setPage("dashboard")}
+              >
+                Back to Portal
+              </button>
+            </div>
+          </header>
+
+          <main className="result-main" style={{ padding: '40px 20px', background: '#f8fafc', minHeight: 'calc(100vh - 65px)' }}>
+            <div className="result-container" style={{ maxWidth: '850px', margin: '0 auto' }}>
+              
+              {/* ALERT HERO */}
+              <div className="malpractice-alert-hero" style={{ background: '#fff1f2', border: '1px solid #fca5a5', borderRadius: '16px', padding: '36px 24px', textAlign: 'center', marginBottom: '24px' }}>
+                <div className="malpractice-alert-icon" style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ffe4e6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <AlertTriangle size={36} color="#dc2626" />
+                </div>
+                <div className="malpractice-alert-badge" style={{ display: 'inline-block', background: '#dc2626', color: '#ffffff', fontSize: '11px', fontWeight: '800', padding: '5px 14px', borderRadius: '20px', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                  EXAM COMPLETED - DISQUALIFIED DUE TO MALPRACTICE
+                </div>
+                <h1 style={{ color: '#991b1b', fontSize: '28px', fontWeight: '800', margin: '0 0 12px' }}>Examination Disqualified</h1>
+                <p className="malpractice-subtitle" style={{ color: '#7f1d1d', fontSize: '14px', lineHeight: '1.5', maxWidth: '640px', margin: '0 auto' }}>
+                  You have completed and submitted your examination. However, because malpractice activity (Copy/Paste or Tab Switch) was detected during your exam session, no score or result was generated.
+                </p>
+              </div>
+
+              {/* DETAILS CARD */}
+              <div className="malpractice-details-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+                
+                {/* DETECTED MALPRACTICE ACTIVITY BOX */}
+                <div className="malpractice-reason-box" style={{ background: '#fff1f2', borderLeft: '4px solid #dc2626', borderRadius: '8px', padding: '16px 20px', marginBottom: '24px' }}>
+                  <h3 style={{ color: '#991b1b', fontSize: '15px', fontWeight: '700', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={18} color="#dc2626" /> Detected Malpractice Activity
+                  </h3>
+                  <div className="reason-text" style={{ color: '#7f1d1d', fontSize: '13.5px' }}>
+                    <strong>Violation Reason: </strong> {reasonText}
+                  </div>
+                </div>
+
+                {/* STATS GRID */}
+                <div className="malpractice-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+                  <div className="mal-stat-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>TAB SWITCH LOG</span>
+                    <strong style={{ fontSize: '18px', color: '#0f172a' }}>{tabLogs} Switches</strong>
+                  </div>
+                  <div className="mal-stat-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>COPY/PASTE LOG</span>
+                    <strong style={{ fontSize: '18px', color: '#0f172a' }}>{copyPasteLogs} Attempts</strong>
+                  </div>
+                  <div className="mal-stat-card danger" style={{ background: '#fff1f2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>RESULT STATUS</span>
+                    <strong style={{ fontSize: '14px', color: '#dc2626' }}>NO RESULT GENERATED</strong>
+                  </div>
+                </div>
+
+                {/* CANDIDATE & EXAMINATION INFORMATION */}
+                <div className="candidate-info-block" style={{ marginBottom: '24px' }}>
+                  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', marginBottom: '16px' }}>
+                    CANDIDATE & EXAMINATION INFORMATION
+                  </h4>
+                  <div className="candidate-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f8fafc', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>Candidate Name</span>
+                    <strong style={{ color: '#0f172a' }}>{studentName}</strong>
+                  </div>
+                  <div className="candidate-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f8fafc', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>Email Address</span>
+                    <strong style={{ color: '#0f172a' }}>{studentEmail}</strong>
+                  </div>
+                  <div className="candidate-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f8fafc', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>Examination</span>
+                    <strong style={{ color: '#0f172a' }}>{examTitle}</strong>
+                  </div>
+                  <div className="candidate-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f8fafc', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>Question Set</span>
+                    <strong style={{ color: '#0f172a' }}>{qSet}</strong>
+                  </div>
+                  <div className="candidate-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', fontSize: '14px' }}>
+                    <span style={{ color: '#64748b' }}>Final Evaluation Status</span>
+                    <strong className="status-disqualified" style={{ color: '#dc2626', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#dc2626', display: 'inline-block' }}></span>
+                      DISQUALIFIED (SCORE: 0 / NO RESULT GENERATED)
+                    </strong>
+                  </div>
+                </div>
+
+                {/* LOCKDOWN NOTICE */}
+                <div className="malpractice-policy-notice" style={{ background: '#fff1f2', border: '1px solid #fca5a5', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '24px' }}>
+                  <AlertTriangle size={22} style={{ flexShrink: 0, color: '#dc2626', marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#991b1b', display: 'block', fontSize: '14px', marginBottom: '4px' }}>
+                      🛑 1-Hour Account Lockdown Active:
+                    </strong>
+                    <p style={{ color: '#7f1d1d', margin: 0, fontSize: '13px', lineHeight: '1.4' }}>
+                      As per examination rules, your account is locked from attempting or starting this examination for <strong>1 HOUR</strong> from the time of disqualification.
+                    </p>
+                  </div>
+                </div>
+
+                {/* BUTTON */}
+                <button
+                  type="button"
+                  className="result-back-button danger-button"
+                  onClick={() => setPage("dashboard")}
+                  style={{ width: '100%', padding: '16px', background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s ease' }}
+                >
+                  Return to Student Portal
+                </button>
+
+              </div>
+
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const percentage = Number(res.percentage || 0);
+    const score = Number(res.score || 0);
+    const total = Number(res.total_questions || 0);
 
     let performance = "Needs Improvement";
 
@@ -2859,14 +3002,14 @@ async function logout() {
 
           <div className="header-user">
             <span className="user-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/></svg></span>
-            {user?.name}
+            {res.student_name || user?.name || "Student"}
           </div>
 
           <button
             className="logout-button"
             onClick={() => setPage("dashboard")}
           >
-            Logout
+            Back to Portal
           </button>
 
         </header>
@@ -2906,11 +3049,11 @@ async function logout() {
                   </div>
 
                   <h2>
-                    {result.exam_title}
+                    {res.exam_title || exam?.title || "Aptitude Test"}
                   </h2>
 
                   <p>
-                    Well done, {result.student_name}!
+                    Well done, {res.student_name || user?.name || "Candidate"}!
                     Your examination has been successfully submitted.
                   </p>
                 </div>
@@ -2919,7 +3062,7 @@ async function logout() {
 
               <div className="question-set-badge">
                 <span>QUESTION SET</span>
-                <strong>{result.question_set}</strong>
+                <strong>{res.question_set || questionSet || "A"}</strong>
               </div>
 
             </section>
@@ -3034,12 +3177,12 @@ async function logout() {
 
                 <div className="info-row">
                   <span>Student Name</span>
-                  <strong>{result.student_name}</strong>
+                  <strong>{res.student_name || user?.name}</strong>
                 </div>
 
                 <div className="info-row">
                   <span>Email</span>
-                  <strong>{result.student_email}</strong>
+                  <strong>{res.student_email || user?.email}</strong>
                 </div>
 
               </div>
@@ -3057,18 +3200,18 @@ async function logout() {
 
                 <div className="info-row">
                   <span>Exam</span>
-                  <strong>{result.exam_title}</strong>
+                  <strong>{res.exam_title || exam?.title}</strong>
                 </div>
 
                 <div className="info-row">
                   <span>Question Set</span>
-                  <strong>{result.question_set}</strong>
+                  <strong>{res.question_set || questionSet || "A"}</strong>
                 </div>
 
                 <div className="info-row">
                   <span>Status</span>
                   <strong className="status-success">
-                    <CircleCheck size={15} /> {result.status}
+                    <CircleCheck size={15} /> {res.status || "submitted"}
                   </strong>
                 </div>
 
