@@ -17,10 +17,9 @@ from routes.attempt import attempt_bp
 def create_app():
 
     possible_paths = [
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist"),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "dist"),
-        os.path.join(os.getcwd(), "frontend", "dist"),
+        os.path.join(os.getcwd(), "backend", "dist"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist"),
         os.path.join(os.getcwd(), "dist"),
     ]
 
