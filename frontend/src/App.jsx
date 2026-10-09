@@ -224,6 +224,18 @@ function App() {
           data.exams[0];
         if (activeExam) {
           setExam(activeExam);
+          try {
+            const resFetch = await fetch(`${API_URL}/exam/${activeExam.id}/result`, {
+              headers: { ...getAuthHeaders(user) },
+              credentials: "include"
+            });
+            const resData = await resFetch.json();
+            if (resFetch.ok && resData.success && resData.result) {
+              setResult(resData.result);
+            }
+          } catch (resErr) {
+            console.error("LOAD RESULT ON DASHBOARD ERROR:", resErr);
+          }
         }
       }
     } catch (error) {
@@ -233,7 +245,7 @@ function App() {
 
   useEffect(() => {
     if (page === "admin-dashboard") loadAdminDashboard();
-    if (page === "dashboard") loadStudentExamDetails();
+    if (page === "dashboard" || page === "result") loadStudentExamDetails();
   }, [page, loadAdminDashboard, loadStudentExamDetails]);
 
   // =========================================================
@@ -389,8 +401,6 @@ function App() {
     if (type === "tab_switch") setTabSwitches((prev) => prev + 1);
     else if (type === "copy" || type === "shortcut") setCopyAttempts((prev) => prev + 1);
     else if (type === "paste" || type === "cut") setPasteAttempts((prev) => prev + 1);
-
-    addToast(`Security Warning: ${detail}`, "warning");
 
     if (attemptId) {
       const endpoint = type === "tab_switch" ? "tab-switch" : "copy-paste";
@@ -1516,7 +1526,7 @@ function App() {
             <div className="welcome-badge">
               <Wifi size={14} /> ACTIVE EXAMINATION PERIOD
             </div>
-            <h1 className="welcome-title">Welcome back, {user?.name || "Student"}! 👋</h1>
+            <h1 className="welcome-title">Welcome! 👋</h1>
             <p className="welcome-sub">
               Your examination portal is active. Review test parameters and rules below before starting.
             </p>
@@ -1524,6 +1534,27 @@ function App() {
 
           <div className="dashboard-grid">
             <div className="exam-card-main">
+              {result && (
+                <div className="msg-banner info" style={{ marginBottom: "1.5rem", background: "rgba(99, 102, 241, 0.1)", border: "1px solid var(--accent-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", borderRadius: "12px" }}>
+                  <div>
+                    <strong style={{ fontSize: "1rem", color: "var(--text-primary)", display: "block" }}>
+                      📊 Examination Result Available ({result.score !== undefined ? `Score: ${result.score}/${result.total_questions || 30}` : "Submitted"})
+                    </strong>
+                    <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                      Status: {result.status === "disqualified" ? "Disqualified" : "Submitted"} | Set {result.question_set || "A"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ width: "auto", padding: "0.5rem 1rem", fontSize: "0.875rem" }}
+                    onClick={() => setPage("result")}
+                  >
+                    View Result Report
+                  </button>
+                </div>
+              )}
+
               <div className="exam-card-header">
                 <div className="exam-card-title">
                   <h3>{exam?.title || "Aptitude Test 2026"}</h3>
@@ -1629,10 +1660,6 @@ function App() {
             <div className="brand-name" style={{ fontSize: "1.1rem" }}>
               Exam<span>Secure</span>
             </div>
-          </div>
-
-          <div className={`proctoring-indicator ${(tabSwitches + copyAttempts + pasteAttempts) > 0 ? "warning" : ""}`}>
-            <MonitorCheck size={16} /> Security Engine Active | Violations: {tabSwitches + copyAttempts + pasteAttempts}
           </div>
 
           <div className={`timer-badge ${timeLeft < 300 ? "warning" : ""}`}>
