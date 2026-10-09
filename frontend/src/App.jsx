@@ -154,7 +154,7 @@ function App() {
     try {
       const response = await fetch(`${API_URL}/me`, {
         method: "GET",
-        headers: { ...getAuthHeaders(user) },
+        headers: { ...getAuthHeaders(null) },
         credentials: "include",
       });
 
@@ -181,7 +181,7 @@ function App() {
         setPage("dashboard");
       }
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     checkSession();
