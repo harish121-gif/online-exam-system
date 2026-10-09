@@ -8,6 +8,10 @@ npm install
 npm run build
 cd ..
 
+echo "=== COPYING FRONTEND BUILD TO BACKEND DIST ==="
+mkdir -p backend/dist
+cp -r frontend/dist/* backend/dist/
+
 echo "=== BUILDING BACKEND ==="
 if [ -f "backend/requirements.txt" ]; then
     pip install -r backend/requirements.txt
