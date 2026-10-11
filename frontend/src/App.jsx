@@ -209,6 +209,13 @@ function App() {
       if (document.hidden) {
         setTabSwitches((previous) => previous + 1);
         console.log("Tab switch detected");
+        if (attemptId) {
+          fetch(`${API_URL}/attempt/${attemptId}/tab-switch`, {
+            method: "POST",
+            headers: { ...getAuthHeaders(user) },
+            credentials: "include",
+          }).catch(() => {});
+        }
       }
     };
 
@@ -223,7 +230,7 @@ function App() {
         handleVisibility
       );
     };
-  }, [page]);
+  }, [page, attemptId, user]);
 
   // =========================================================
   // COPY / PASTE DETECTION
@@ -234,25 +241,34 @@ function App() {
       return;
     }
 
+    const reportCopyViolation = () => {
+      if (attemptId) {
+        fetch(`${API_URL}/attempt/${attemptId}/copy-paste`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(user) },
+          credentials: "include",
+        }).catch(() => {});
+      }
+    };
+
     const handleCopy = (event) => {
       event.preventDefault();
-
       setCopyAttempts((previous) => previous + 1);
-
+      reportCopyViolation();
       console.log("Copy attempt detected");
     };
 
     const handlePaste = (event) => {
       event.preventDefault();
-
       setPasteAttempts((previous) => previous + 1);
-
+      reportCopyViolation();
       console.log("Paste attempt detected");
     };
 
     const handleCut = (event) => {
       event.preventDefault();
-
+      setCopyAttempts((previous) => previous + 1);
+      reportCopyViolation();
       console.log("Cut attempt detected");
     };
 
@@ -262,25 +278,24 @@ function App() {
       // Ctrl + C
       if (event.ctrlKey && key === "c") {
         event.preventDefault();
-
         setCopyAttempts((previous) => previous + 1);
-
+        reportCopyViolation();
         console.log("Ctrl+C detected");
       }
 
       // Ctrl + V
       if (event.ctrlKey && key === "v") {
         event.preventDefault();
-
         setPasteAttempts((previous) => previous + 1);
-
+        reportCopyViolation();
         console.log("Ctrl+V detected");
       }
 
       // Ctrl + X
       if (event.ctrlKey && key === "x") {
         event.preventDefault();
-
+        setCopyAttempts((previous) => previous + 1);
+        reportCopyViolation();
         console.log("Ctrl+X detected");
       }
     };
@@ -296,7 +311,7 @@ function App() {
       document.removeEventListener("cut", handleCut);
       document.removeEventListener("keydown", handleKeyboard);
     };
-  }, [page]);
+  }, [page, attemptId, user]);
 
   // =========================================================
   // SESSION CHECK
@@ -1936,6 +1951,7 @@ async function logout() {
                   <th>Score</th>
                   <th>Percentage</th>
                   <th>Tab Switches</th>
+                  <th>Copy/Paste</th>
                   <th>Status</th>
                   <th>Started</th>
                   <th>Action</th>
@@ -1945,7 +1961,7 @@ async function logout() {
               <tbody>
                 {adminAttempts.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="admin-empty">
+                    <td colSpan="11" className="admin-empty">
                       No examination attempts found.
                     </td>
                   </tr>
@@ -1986,11 +2002,29 @@ async function logout() {
                         )}
                       </td>
                       <td>
+                        {(attempt.copy_paste_count || 0) > 0 ? (
+                          <span className="status-badge inactive" style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
+                            ⚠️ {attempt.copy_paste_count} attempt{(attempt.copy_paste_count || 0) > 1 ? "s" : ""}
+                          </span>
+                        ) : (
+                          <span className="status-badge active" style={{ background: "#dcfce7", color: "#166534" }}>
+                            ✓ 0 Clean
+                          </span>
+                        )}
+                      </td>
+                      <td>
                         <span
                           className={
-                            attempt.status === "submitted" || attempt.status === "completed"
+                            attempt.status === "disqualified" || attempt.status === "terminated"
+                              ? "status-badge inactive"
+                              : attempt.status === "submitted" || attempt.status === "completed"
                               ? "status-badge active"
                               : "status-badge inactive"
+                          }
+                          style={
+                            attempt.status === "disqualified" || attempt.status === "terminated"
+                              ? { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5", fontWeight: "700" }
+                              : undefined
                           }
                         >
                           {attempt.status || "Unknown"}
@@ -2096,7 +2130,7 @@ async function logout() {
 
               <div>
                 <span>Status</span>
-                <strong>
+                <strong style={{ color: selectedAttempt.status === 'disqualified' || selectedAttempt.status === 'terminated' ? '#dc2626' : 'inherit' }}>
                   {selectedAttempt.status}
                 </strong>
               </div>
@@ -2105,6 +2139,27 @@ async function logout() {
                 <span>Duration</span>
                 <strong>
                   {selectedAttempt.duration_minutes || 0} minutes
+                </strong>
+              </div>
+
+              <div>
+                <span>Tab Switches</span>
+                <strong style={{ color: (selectedAttempt.tab_switch_count || 0) > 0 ? '#dc2626' : '#166534' }}>
+                  {(selectedAttempt.tab_switch_count || 0) > 0 ? `⚠️ ${selectedAttempt.tab_switch_count}` : '✓ 0 Clean'}
+                </strong>
+              </div>
+
+              <div>
+                <span>Copy/Paste</span>
+                <strong style={{ color: (selectedAttempt.copy_paste_count || 0) > 0 ? '#dc2626' : '#166534' }}>
+                  {(selectedAttempt.copy_paste_count || 0) > 0 ? `⚠️ ${selectedAttempt.copy_paste_count}` : '✓ 0 Clean'}
+                </strong>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span>Malpractice Details / Reason</span>
+                <strong style={{ color: selectedAttempt.malpractice_reason ? '#dc2626' : '#64748b' }}>
+                  {selectedAttempt.malpractice_reason || "Clean session - No malpractice detected"}
                 </strong>
               </div>
 
@@ -2837,16 +2892,31 @@ async function logout() {
 
   if (page === "result") {
     const res = result || {};
-    const isDisqualified = res.status === "disqualified" || res.status === "terminated" || res.is_malpractice || (tabSwitches >= 3 || (copyAttempts + pasteAttempts) >= 3);
+    const tabLogs = res.tab_switch_count ?? tabSwitches ?? 0;
+    const copyPasteLogs = res.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0;
+    const isDisqualified =
+      res.status === "disqualified" ||
+      res.status === "terminated" ||
+      res.is_malpractice ||
+      tabLogs > 0 ||
+      copyPasteLogs > 0 ||
+      Boolean(res.malpractice_reason);
 
     if (isDisqualified) {
       const studentName = res.student_name || user?.name || "Student";
       const studentEmail = res.student_email || user?.email || "student@exam.com";
       const examTitle = res.exam_title || exam?.title || "Aptitude Test";
       const qSet = res.question_set || questionSet || "A";
-      const tabLogs = res.tab_switch_count ?? tabSwitches ?? 0;
-      const copyPasteLogs = res.copy_paste_count ?? (copyAttempts + pasteAttempts) ?? 0;
-      const reasonText = res.malpractice_reason || `Malpractice Detected: Tab Switching (${tabLogs} times) & Copy/Paste Activity (${copyPasteLogs} times)`;
+
+      let reasonText = res.malpractice_reason;
+      if (!reasonText || reasonText.startsWith("Malpractice Disqualification: Excessive ")) {
+        const reasons = [];
+        if (tabLogs > 0) reasons.push(`Tab Switching (${tabLogs} times)`);
+        if (copyPasteLogs > 0) reasons.push(`Copy/Paste Activity (${copyPasteLogs} times)`);
+        reasonText = reasons.length > 0
+          ? `Malpractice Detected: ${reasons.join(" & ")}`
+          : "Malpractice Detected: Tab Switching & Copy/Paste Activity";
+      }
 
       return (
         <div className="dashboard-page result-page malpractice-terminated-page">
@@ -3344,11 +3414,22 @@ async function logout() {
 
       if (response.ok && data.success) {
 
-        alert(
-          autoSubmit
-            ? "Time is over. Your examination has been submitted."
-            : "Examination submitted successfully."
-        );
+        const isDisq =
+          data.status === "disqualified" ||
+          data.status === "terminated" ||
+          data.is_malpractice ||
+          tabSwitches > 0 ||
+          (copyAttempts + pasteAttempts) > 0 ||
+          (data.tab_switch_count || 0) > 0 ||
+          (data.copy_paste_count || 0) > 0;
+
+        if (!isDisq) {
+          alert(
+            autoSubmit
+              ? "Time is over. Your examination has been submitted."
+              : "Examination submitted successfully."
+          );
+        }
 
         setResult(data.result || data);
         setPage("result");
@@ -3524,38 +3605,6 @@ async function logout() {
           />
 
         </div>
-
-        {(tabSwitches > 0 ||
-          copyAttempts > 0 ||
-          pasteAttempts > 0) && (
-          <div className="monitoring-warning">
-
-            <AlertTriangle size={16} />
-
-            <span>
-              Security Monitoring:
-            </span>
-
-            {tabSwitches > 0 && (
-              <strong>
-                Tab switches: {tabSwitches}
-              </strong>
-            )}
-
-            {copyAttempts > 0 && (
-              <strong>
-                Copy: {copyAttempts}
-              </strong>
-            )}
-
-            {pasteAttempts > 0 && (
-              <strong>
-                Paste: {pasteAttempts}
-              </strong>
-            )}
-
-          </div>
-        )}
 
         {examMessage && (
           <div className="error-message">

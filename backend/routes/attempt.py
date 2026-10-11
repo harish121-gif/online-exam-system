@@ -195,18 +195,24 @@ def submit_attempt(attempt_id):
             payload_copy_attempts = int(data.get("copy_attempts", 0))
             payload_paste_attempts = int(data.get("paste_attempts", 0))
 
-            total_tab_switches = (attempt.get("tab_switch_count") or 0) + payload_tab_switches
-            total_copy_paste = (attempt.get("copy_paste_count") or 0) + payload_copy_attempts + payload_paste_attempts
+            total_tab_switches = max(
+                (attempt.get("tab_switch_count") or 0),
+                payload_tab_switches
+            )
+            total_copy_paste = max(
+                (attempt.get("copy_paste_count") or 0),
+                payload_copy_attempts + payload_paste_attempts
+            )
 
             malpractice_msg = None
-            if total_tab_switches >= 5 or total_copy_paste >= 5 or (total_tab_switches + total_copy_paste) >= 6:
+            if total_tab_switches > 0 or total_copy_paste > 0:
                 reasons = []
                 if total_tab_switches > 0:
                     reasons.append(f"Tab Switching ({total_tab_switches} times)")
                 if total_copy_paste > 0:
                     reasons.append(f"Copy/Paste Activity ({total_copy_paste} times)")
                 
-                malpractice_msg = "Malpractice Disqualification: Excessive " + " & ".join(reasons)
+                malpractice_msg = f"Malpractice Detected: {' & '.join(reasons)}"
 
                 cursor.execute(
                     """
