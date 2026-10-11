@@ -127,23 +127,26 @@ def get_current_admin_id():
 
 def get_current_user():
     """
-    Return the currently logged-in user details.
+    Return the currently logged-in user details from headers or Flask session.
     """
+    user_id_hdr = request.headers.get("X-User-Id")
+    user_role_hdr = request.headers.get("X-User-Role")
+
+    if user_id_hdr:
+        try:
+            return {
+                "id": int(user_id_hdr),
+                "role": str(user_role_hdr or "student").lower(),
+                "name": request.headers.get("X-User-Name", session.get("name", "User")),
+                "email": request.headers.get("X-User-Email", session.get("email", ""))
+            }
+        except (ValueError, TypeError):
+            pass
+
     user_id = session.get("user_id")
     role = session.get("role", "student")
     name = session.get("name")
     email = session.get("email")
-
-    if not user_id:
-        user_id_hdr = request.headers.get("X-User-Id")
-        if user_id_hdr:
-            try:
-                user_id = int(user_id_hdr)
-                role = request.headers.get("X-User-Role", "student")
-                name = request.headers.get("X-User-Name", "Student")
-                email = request.headers.get("X-User-Email", "")
-            except (ValueError, TypeError):
-                pass
 
     if not user_id:
         return None

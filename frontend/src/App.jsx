@@ -8,18 +8,22 @@ import {
 } from "lucide-react";
 import "./App.css";
 const getApiUrl = () => {
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1")
-  ) {
-    return "/api";
+  if (typeof window !== "undefined") {
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "online-exam-system-gzy3.onrender.com" ||
+      window.location.hostname.includes("online-exam")
+    ) {
+      return "/api";
+    }
   }
   const envUrl = import.meta.env.VITE_API_URL;
   if (
     envUrl &&
     envUrl.trim() !== "" &&
-    envUrl.trim() !== "/api"
+    envUrl.trim() !== "/api" &&
+    !envUrl.includes("examsecure-backend")
   ) {
     return envUrl.trim();
   }
@@ -31,7 +35,7 @@ const EXAM_ID = import.meta.env.VITE_EXAM_ID || "2";
 
 const getAuthHeaders = (currentUser) => {
   let stored = currentUser;
-  if (!stored) {
+  if (!stored || !stored.id) {
     try {
       stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
     } catch {
@@ -141,11 +145,15 @@ function App() {
 
   // Load admin dashboard statistics
   useEffect(() => {
-    if (page !== "admin-dashboard") {
-      return;
+    if (page === "admin-dashboard") {
+      loadAdminDashboard(user);
+    } else if (page === "admin-students") {
+      loadAdminStudents(user);
+    } else if (page === "admin-exams") {
+      loadAdminExams(user);
+    } else if (page === "admin-reports") {
+      loadAdminAttempts(user);
     }
-
-    loadAdminDashboard(user);
   }, [page, user]);
 
   // Load student exam details
@@ -571,7 +579,14 @@ async function checkSession() {
 
   async function loadAdminDashboard(currentUser = null) {
     try {
-      const activeUser = currentUser || user;
+      let activeUser = currentUser || user;
+      if (!activeUser || !activeUser.id) {
+        try {
+          activeUser = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+        } catch {
+          activeUser = null;
+        }
+      }
       const response = await fetch(`${API_URL}/admin/dashboard`, {
         method: "GET",
         headers: { ...getAuthHeaders(activeUser) },
@@ -584,6 +599,7 @@ async function checkSession() {
 
       if (response.ok && data.success) {
         setAdminStats(data.statistics);
+        setMessage("");
       } else {
         console.error(
           "ADMIN DASHBOARD ERROR:",
@@ -601,7 +617,14 @@ async function checkSession() {
 
   async function loadAdminStudents(currentUser = null) {
     try {
-      const activeUser = currentUser || user;
+      let activeUser = currentUser || user;
+      if (!activeUser || !activeUser.id) {
+        try {
+          activeUser = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+        } catch {
+          activeUser = null;
+        }
+      }
       const response = await fetch(`${API_URL}/admin/students`, {
         headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
@@ -611,6 +634,7 @@ async function checkSession() {
 
       if (response.ok && data.success) {
         setAdminStudents(Array.isArray(data.students) ? data.students : []);
+        setMessage("");
       } else {
         setMessage(data.message || "Unable to load students.");
       }
@@ -718,7 +742,14 @@ async function checkSession() {
 
   async function loadAdminExams(currentUser = null) {
     try {
-      const activeUser = currentUser || user;
+      let activeUser = currentUser || user;
+      if (!activeUser || !activeUser.id) {
+        try {
+          activeUser = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+        } catch {
+          activeUser = null;
+        }
+      }
       const response = await fetch(`${API_URL}/exam/`, {
         headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
@@ -728,6 +759,7 @@ async function checkSession() {
 
       if (response.ok && data.success) {
         setAdminExams(Array.isArray(data.exams) ? data.exams : []);
+        setMessage("");
       } else {
         setMessage(data.message || "Unable to load examinations.");
       }
@@ -835,7 +867,14 @@ async function checkSession() {
 
   async function loadAdminAttempts(currentUser = null) {
     try {
-      const activeUser = currentUser || user;
+      let activeUser = currentUser || user;
+      if (!activeUser || !activeUser.id) {
+        try {
+          activeUser = JSON.parse(localStorage.getItem("examsecure_user") || "null");
+        } catch {
+          activeUser = null;
+        }
+      }
       const response = await fetch(`${API_URL}/admin/attempts`, {
         headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
@@ -847,6 +886,7 @@ async function checkSession() {
         setAdminAttempts(
           Array.isArray(data.attempts) ? data.attempts : []
         );
+        setMessage("");
       } else {
         setMessage(data.message || "Unable to load reports.");
       }
