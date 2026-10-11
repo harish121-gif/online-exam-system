@@ -145,8 +145,8 @@ function App() {
       return;
     }
 
-    loadAdminDashboard();
-  }, [page]);
+    loadAdminDashboard(user);
+  }, [page, user]);
 
   // Load student exam details
   useEffect(() => {
@@ -335,20 +335,33 @@ async function checkSession() {
 
       if (data.user.role === "student") {
         setPage("dashboard");
+      } else if (data.user.role === "admin") {
+        setPage("admin-dashboard");
+        loadAdminDashboard(data.user);
       }
     } else {
       const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
-      if (stored && stored.role === "student") {
+      if (stored) {
         setUser(stored);
-        setPage("dashboard");
+        if (stored.role === "student") {
+          setPage("dashboard");
+        } else if (stored.role === "admin") {
+          setPage("admin-dashboard");
+          loadAdminDashboard(stored);
+        }
       }
     }
   } catch (error) {
     console.error("SESSION CHECK ERROR:", error);
     const stored = JSON.parse(localStorage.getItem("examsecure_user") || "null");
-    if (stored && stored.role === "student") {
+    if (stored) {
       setUser(stored);
-      setPage("dashboard");
+      if (stored.role === "student") {
+        setPage("dashboard");
+      } else if (stored.role === "admin") {
+        setPage("admin-dashboard");
+        loadAdminDashboard(stored);
+      }
     }
   }
 }
@@ -443,7 +456,9 @@ async function checkSession() {
 
       if (response.ok && data.success) {
         setUser(data.user);
+        localStorage.setItem("examsecure_user", JSON.stringify(data.user));
         setPage("admin-dashboard");
+        loadAdminDashboard(data.user);
 
         setAdminPassword("");
         setMessage("");
@@ -554,10 +569,12 @@ async function checkSession() {
   // ADMIN DASHBOARD
   // =========================================================
 
-  async function loadAdminDashboard() {
+  async function loadAdminDashboard(currentUser = null) {
     try {
+      const activeUser = currentUser || user;
       const response = await fetch(`${API_URL}/admin/dashboard`, {
         method: "GET",
+        headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
       });
 
@@ -582,9 +599,11 @@ async function checkSession() {
   // ADMIN MANAGEMENT
   // =========================================================
 
-  async function loadAdminStudents() {
+  async function loadAdminStudents(currentUser = null) {
     try {
+      const activeUser = currentUser || user;
       const response = await fetch(`${API_URL}/admin/students`, {
+        headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
       });
 
@@ -617,6 +636,7 @@ async function checkSession() {
           method: isEditing ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
+            ...getAuthHeaders(user),
           },
           credentials: "include",
           body: JSON.stringify(studentForm),
@@ -676,6 +696,7 @@ async function checkSession() {
         `${API_URL}/admin/students/${studentId}`,
         {
           method: "DELETE",
+          headers: { ...getAuthHeaders(user) },
           credentials: "include",
         }
       );
@@ -695,9 +716,11 @@ async function checkSession() {
     }
   }
 
-  async function loadAdminExams() {
+  async function loadAdminExams(currentUser = null) {
     try {
+      const activeUser = currentUser || user;
       const response = await fetch(`${API_URL}/exam/`, {
+        headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
       });
 
@@ -730,6 +753,7 @@ async function checkSession() {
           method: isEditing ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
+            ...getAuthHeaders(user),
           },
           credentials: "include",
           body: JSON.stringify(examForm),
@@ -789,6 +813,7 @@ async function checkSession() {
         `${API_URL}/exam/${examId}`,
         {
           method: "DELETE",
+          headers: { ...getAuthHeaders(user) },
           credentials: "include",
         }
       );
@@ -808,9 +833,11 @@ async function checkSession() {
     }
   }
 
-  async function loadAdminAttempts() {
+  async function loadAdminAttempts(currentUser = null) {
     try {
+      const activeUser = currentUser || user;
       const response = await fetch(`${API_URL}/admin/attempts`, {
+        headers: { ...getAuthHeaders(activeUser) },
         credentials: "include",
       });
 
@@ -834,6 +861,7 @@ async function checkSession() {
       const response = await fetch(
         `${API_URL}/admin/attempts/${attemptId}`,
         {
+          headers: { ...getAuthHeaders(user) },
           credentials: "include",
         }
       );
